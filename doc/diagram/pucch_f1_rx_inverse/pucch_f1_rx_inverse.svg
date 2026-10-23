@@ -1,0 +1,282 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2590" height="810" viewBox="0 0 2590 810"
+     font-family="Calibri, Arial, sans-serif" font-size="13">
+  <!-- module : pucch_f1_rx_inverse -->
+  <!-- stage  : 2 - diagram L1 (u_ children + approved blk_occ, blk_acc; OCC ROM as mem_occ; join register gate level) -->
+  <!-- source : doc/spec/architecture/pucch_f1_rx_inverse_spec.md + child ports (pucch_f1_cordic, pucch_f1_normalize) -->
+  <desc id="model"><![CDATA[
+// clk rising edge; rst_n synchronous active-low: valids, pulses, join register and accumulator reset to 0.
+// Nets with the same label are connected. txn_clr has priority over capture / accumulate.
+d_n_re = n_re;
+[blk_occ]
+n_sel   = phase_hop ? n_sf1 : n_sf0;                        // N_SF of the current hop
+occ_off = (n_sel == 3'd1) ? 8'd0 : (n_sel == 3'd2) ? 8'd1 : (n_sel == 3'd3) ? 8'd5 : (n_sel == 3'd4) ? 8'd14 :
+          (n_sel == 3'd5) ? 8'd30 : (n_sel == 3'd6) ? 8'd55 : (n_sel == 3'd7) ? 8'd91 : 8'd0;
+occ_addr = occ_off + occ_i * n_sel + phase_m;                // 8 bits, legal 0..139
+occ_err  = (n_sel == 3'd0) | (occ_i >= n_sel) | (phase_m >= n_sel);   // combinational, sampled by ctrl at join_fire
+[mem_occ]
+// constant ROM 140 x 16, OCC[addr] = floor(65536 * rho / N) (source 07 section 3, N = 4 Walsh rows)
+occ_phase = occ_err ? 16'd0 : OCC[occ_addr];
+[op_padd]
+tot_phase = r_phase + occ_phase;                             // forward base + CS + OCC, modulo 65536
+[op_neg]
+rm_phase = -tot_phase;                                       // negate the total once, modulo 65536
+[bus_jin]
+j_in = {y_i, y_q, rm_phase, phase_sample_q, phase_first, phase_last};          // 57 bits
+[mux_join]
+j_d = join_fire ? j_in : {j_i_q, j_q_q, j_phase_q, j_sample_q_q, j_first_q, j_last_q};
+[reg_join]
+{j_i_q, j_q_q, j_phase_q, j_sample_q_q, j_first_q, j_last_q} <= j_d @(rst=57'd0);
+[bus_jsp]
+{j_i_q, j_q_q, j_phase_q, j_sample_q_q, j_first_q, j_last_q} = j_data_q;
+[gate_jv]
+j_valid_d = join_fire & ~txn_clr;
+[reg_jv]
+j_valid_q <= j_valid_d @(rst=1'b0);
+[u_cordic]
+pucch_f1_cordic u_cordic (.clr(txn_clr), .in_valid(j_valid_q), .in_i(j_i_q), .in_q(j_q_q), .in_phase(j_phase_q),
+  .in_sample_q(j_sample_q_q), .in_first(j_first_q), .in_last(j_last_q), .out_valid(c_valid), .out_i(c_i), .out_q(c_q),
+  .out_sample_q(c_sample_q), .out_first(c_first), .out_last(c_last), .ovf_err(c_ovf_err));
+[blk_acc]
+x_i = {{8{c_i[17]}}, c_i};  x_q = {{8{c_q[17]}}, c_q};                      // sign-extend to 26
+sum_i = c_first ? {x_i[25], x_i} : {s_i_q[25], s_i_q} + {x_i[25], x_i};       // 27 bits; same for q
+ovf   = (sum_i[26] != sum_i[25]) | (sum_q[26] != sum_q[25]);                   // outside signed26
+s_i_q <= txn_clr ? 26'd0 : c_valid ? sum_i[25:0] : s_i_q @(rst=26'd0);   s_q_q likewise
+acc_ovf_q  <= ~txn_clr & c_valid & ovf @(rst=1'b0);
+acc_done_q <= ~txn_clr & c_valid & c_last & ~ovf @(rst=1'b0);              // S already includes the last sample
+acc_done = acc_done_q;
+[u_normalize]
+pucch_f1_normalize u_normalize (.clr(txn_clr), .start(acc_done_q), .s_i(s_i_q), .s_q(s_q_q), .n_re(n_re),
+  .d_valid(d_valid), .d_ready(d_ready), .d_i(d_i), .d_q(d_q), .sat_err(n_sat_err));
+[gate_num]
+num_err = c_ovf_err | acc_ovf_q | n_sat_err;
+]]></desc>
+  <style>
+    .w{fill:none;stroke:#000;stroke-width:1.5}
+    .s{fill:#fff;stroke:#000;stroke-width:1.5}
+    .dot{fill:#000}
+    text{fill:#000}
+  </style>
+  <rect width="100%" height="100%" fill="#fff"/>
+  <text x="142" y="64" text-anchor="end">phase_hop</text>
+  <path class="w" d="M150,60 H300"/>
+  <text x="142" y="94" text-anchor="end">phase_m[2:0]</text>
+  <path class="w" d="M150,90 H300"/>
+  <text x="142" y="124" text-anchor="end">occ_i[2:0]</text>
+  <path class="w" d="M150,120 H300"/>
+  <text x="142" y="154" text-anchor="end">n_sf0[2:0]</text>
+  <path class="w" d="M150,150 H300"/>
+  <text x="142" y="184" text-anchor="end">n_sf1[2:0]</text>
+  <path class="w" d="M150,180 H300"/>
+  <g id="blk_occ">
+  <rect class="s" x="300" y="40" width="140" height="170"/>
+  <text x="370" y="129" text-anchor="middle">occ_addr</text>
+  </g>
+  <text x="444" y="86">occ_addr[7:0]</text>
+  <text x="444" y="166">occ_err</text>
+  <path class="w" d="M440,170 H1900"/>
+  <text x="1900" y="166" text-anchor="end">occ_err</text>
+  <circle class="dot" cx="520" cy="170" r="4"/>
+  <g id="mem_occ">
+  <rect class="s" x="620" y="40" width="160" height="90"/>
+  <text x="700" y="80" text-anchor="middle">occ_rom</text>
+  <text x="700" y="98" text-anchor="middle">140 x 16</text>
+  </g>
+  <path class="w" d="M440,90 H620"/>
+  <text x="616" y="86" text-anchor="end">RA[7:0]</text>
+  <path class="w" d="M520,170 V150 H700 V130"/>
+  <text x="704" y="146">zero if occ_err</text>
+  <text x="142" y="264" text-anchor="end">r_phase[15:0]</text>
+  <path class="w" d="M150,260 H800"/>
+  <g id="op_padd">
+  <ellipse class="s" cx="830" cy="250" rx="26" ry="18"/>
+  <text x="830" y="255" text-anchor="middle">+</text>
+  </g>
+  <path class="w" d="M780,70 H800 V240 H808.4"/>
+  <text x="784" y="66">RD[15:0]</text>
+  <text x="740" y="66"></text>
+  <path class="w" d="M800,260 H808.4"/>
+  <g id="op_neg">
+  <ellipse class="s" cx="930" cy="250" rx="26" ry="18"/>
+  <text x="930" y="255" text-anchor="middle">-x</text>
+  </g>
+  <path class="w" d="M856,250 H904"/>
+  <text x="860" y="236">tot</text>
+  <g id="bus_jin">
+  <rect class="s" x="1000" y="330" width="25" height="160"/>
+  </g>
+  <text x="1012.5" y="324" text-anchor="middle">j_in[56:0]</text>
+  <text x="142" y="349" text-anchor="end">y_i[15:0]</text>
+  <path class="w" d="M150,345 H1000"/>
+  <text x="1020" y="342"></text>
+  <text x="142" y="374" text-anchor="end">y_q[15:0]</text>
+  <path class="w" d="M150,370 H1000"/>
+  <text x="1020" y="367"></text>
+  <path class="w" d="M956,250 H970 V395 H1000"/>
+  <text x="966" y="391" text-anchor="end">rm_phase</text>
+  <text x="1020" y="392"></text>
+  <text x="142" y="424" text-anchor="end">phase_sample_q[6:0]</text>
+  <path class="w" d="M150,420 H1000"/>
+  <text x="1020" y="417"></text>
+  <text x="142" y="449" text-anchor="end">phase_first</text>
+  <path class="w" d="M150,445 H1000"/>
+  <text x="1020" y="442"></text>
+  <text x="142" y="474" text-anchor="end">phase_last</text>
+  <path class="w" d="M150,470 H1000"/>
+  <text x="1020" y="467"></text>
+  <g id="mux_join">
+  <path class="s" d="M1090,356 L1120,371 L1120,411 L1090,426 Z"/>
+  <text x="1095" y="384">0</text>
+  <text x="1095" y="414">1</text>
+  </g>
+  <path class="w" d="M1025,410 H1090"/>
+  <path class="w" d="M1075,340 V380 H1090"/>
+  <text x="1075" y="335" text-anchor="middle">j_data_q</text>
+  <path class="w" d="M1105,440.5 V418.5"/>
+  <text x="1105" y="454.5" text-anchor="middle">join_fire</text>
+  <g id="reg_join">
+  <rect class="s" x="1176" y="330" width="90" height="110"/>
+  <rect class="s" x="1170" y="336" width="90" height="110"/>
+  <path class="w" d="M1170,416 L1184,426 L1170,436"/>
+  <circle class="s" cx="1215" cy="451" r="5"/>
+  <text x="1215" y="386" text-anchor="middle">j_data_q</text>
+  <text x="1215" y="402" text-anchor="middle">[56:0]</text>
+  </g>
+  <text x="1215" y="473" text-anchor="middle">rst_n</text>
+  <path class="w" d="M1120,391 H1170"/>
+  <g id="bus_jsp">
+  <rect class="s" x="1320" y="330" width="25" height="160"/>
+  </g>
+  <text x="1332.5" y="324" text-anchor="middle">j_data_q[56:0]</text>
+  <path class="w" d="M1266,391 H1320"/>
+  <path class="w" d="M1345,345 H1500"/>
+  <text x="1349" y="342">[56:41]</text>
+  <path class="w" d="M1345,370 H1500"/>
+  <text x="1349" y="367">[40:25]</text>
+  <path class="w" d="M1345,395 H1500"/>
+  <text x="1349" y="392">[24:9]</text>
+  <path class="w" d="M1345,420 H1500"/>
+  <text x="1349" y="417">[8:2]</text>
+  <path class="w" d="M1345,445 H1500"/>
+  <text x="1349" y="442">[1]</text>
+  <path class="w" d="M1345,470 H1500"/>
+  <text x="1349" y="467">[0]</text>
+  <text x="142" y="564" text-anchor="end">join_fire</text>
+  <path class="w" d="M150,560 H1000"/>
+  <text x="1004" y="564">join_fire</text>
+  <text x="142" y="594" text-anchor="end">txn_clr</text>
+  <path class="w" d="M150,590 H1000"/>
+  <text x="1004" y="594">txn_clr</text>
+  <g id="gate_jv">
+  <path class="s" d="M1100,620 H1130 A25,25 0 0 1 1130,670 H1100 Z"/>
+  <circle class="s" cx="1096" cy="655" r="4"/>
+  </g>
+  <path class="w" d="M1060,635 H1100"/>
+  <text x="1056" y="639" text-anchor="end">join_fire</text>
+  <path class="w" d="M1060,655 H1092"/>
+  <text x="1056" y="659" text-anchor="end">txn_clr</text>
+  <g id="reg_jv">
+  <rect class="s" x="1190" y="590" width="80" height="110"/>
+  <path class="w" d="M1190,670 L1204,680 L1190,690"/>
+  <circle class="s" cx="1230" cy="705" r="5"/>
+  <text x="1230" y="649" text-anchor="middle">j_valid_q</text>
+  </g>
+  <text x="1230" y="727" text-anchor="middle">rst_n</text>
+  <path class="w" d="M1155,645 H1190"/>
+  <path class="w" d="M1270,645 H1380 V300 H1500"/>
+  <g id="u_cordic">
+  <rect class="s" x="1500" y="270" width="160" height="270"/>
+  <text x="1580" y="400" text-anchor="middle">u_cordic</text>
+  <text x="1580" y="418" text-anchor="middle">pucch_f1_cordic</text>
+  </g>
+  <text x="1496" y="296" text-anchor="end">in_valid</text>
+  <text x="1496" y="341" text-anchor="end">in_i</text>
+  <text x="1496" y="366" text-anchor="end">in_q</text>
+  <text x="1496" y="391" text-anchor="end">in_phase</text>
+  <text x="1496" y="416" text-anchor="end">in_sample_q</text>
+  <text x="1496" y="441" text-anchor="end">in_first</text>
+  <text x="1496" y="466" text-anchor="end">in_last</text>
+  <text x="1496" y="516" text-anchor="end">clr</text>
+  <text x="1664" y="296">out_valid</text>
+  <text x="1664" y="341">out_i</text>
+  <text x="1664" y="366">out_q</text>
+  <text x="1664" y="391">out_sample_q</text>
+  <text x="1664" y="416">out_first</text>
+  <text x="1664" y="441">out_last</text>
+  <text x="1664" y="491">ovf_err</text>
+  <path class="w" d="M1440,520 H1500"/>
+  <text x="1436" y="524" text-anchor="end">txn_clr</text>
+  <path class="w" d="M1660,300 H1800"/>
+  <path class="w" d="M1660,345 H1800"/>
+  <path class="w" d="M1660,370 H1800"/>
+  <path class="w" d="M1660,420 H1800"/>
+  <path class="w" d="M1660,445 H1800"/>
+  <path class="w" d="M1660,495 H1720"/>
+  <text x="1724" y="499">c_ovf_err</text>
+  <g id="blk_acc">
+  <rect class="s" x="1800" y="270" width="150" height="270"/>
+  <text x="1875" y="409" text-anchor="middle">accumulate</text>
+  </g>
+  <text x="1796" y="296" text-anchor="end">c_valid</text>
+  <text x="1796" y="341" text-anchor="end">c_i</text>
+  <text x="1796" y="366" text-anchor="end">c_q</text>
+  <text x="1796" y="416" text-anchor="end">c_first</text>
+  <text x="1796" y="441" text-anchor="end">c_last</text>
+  <text x="1796" y="516" text-anchor="end">txn_clr</text>
+  <text x="1954" y="306">s_i_q[25:0]</text>
+  <text x="1954" y="346">s_q_q[25:0]</text>
+  <text x="1954" y="426">acc_done_q</text>
+  <text x="1904" y="556">acc_ovf_q</text>
+  <path class="w" d="M1740,520 H1800"/>
+  <text x="1736" y="524" text-anchor="end">txn_clr</text>
+  <path class="w" d="M1900,540 V590"/>
+  <text x="1900" y="604" text-anchor="middle">acc_ovf_q</text>
+  <path class="w" d="M1950,430 H2040 V620 H2550"/>
+  <text x="2550" y="616" text-anchor="end">acc_done</text>
+  <circle class="dot" cx="2040" cy="430" r="4"/>
+  <g id="u_normalize">
+  <rect class="s" x="2100" y="280" width="160" height="280"/>
+  <text x="2180" y="415" text-anchor="middle">u_normalize</text>
+  <text x="2180" y="433" text-anchor="middle">pucch_f1_normalize</text>
+  </g>
+  <text x="2096" y="386" text-anchor="end">start</text>
+  <text x="2096" y="306" text-anchor="end">s_i</text>
+  <text x="2096" y="346" text-anchor="end">s_q</text>
+  <text x="2096" y="466" text-anchor="end">n_re</text>
+  <text x="2096" y="496" text-anchor="end">d_ready</text>
+  <text x="2096" y="526" text-anchor="end">clr</text>
+  <text x="2264" y="306">d_valid</text>
+  <text x="2264" y="346">d_i</text>
+  <text x="2264" y="386">d_q</text>
+  <text x="2264" y="466">sat_err</text>
+  <path class="w" d="M1950,310 H2100"/>
+  <path class="w" d="M1950,350 H2100"/>
+  <path class="w" d="M2040,430 V390 H2100"/>
+  <path class="w" d="M2040,470 H2100"/>
+  <text x="2036" y="474" text-anchor="end">n_re</text>
+  <text x="2022" y="504" text-anchor="end">d_ready</text>
+  <path class="w" d="M2030,500 H2100"/>
+  <path class="w" d="M2040,530 H2100"/>
+  <text x="2036" y="534" text-anchor="end">txn_clr</text>
+  <path class="w" d="M2260,310 H2550"/>
+  <text x="2550" y="306" text-anchor="end">d_valid</text>
+  <path class="w" d="M2260,350 H2550"/>
+  <text x="2550" y="346" text-anchor="end">d_i[25:0]</text>
+  <path class="w" d="M2260,390 H2550"/>
+  <text x="2550" y="386" text-anchor="end">d_q[25:0]</text>
+  <path class="w" d="M2260,470 H2320"/>
+  <text x="2324" y="474">n_sat_err</text>
+  <g id="gate_num">
+  <path class="s" d="M2300,710 Q2340,710 2370,745 Q2340,780 2300,780 Q2314,745 2300,710 Z"/>
+  </g>
+  <path class="w" d="M2244.7,725 H2304.7"/>
+  <text x="2240.7" y="729" text-anchor="end">c_ovf_err</text>
+  <path class="w" d="M2247,745 H2307"/>
+  <text x="2243" y="749" text-anchor="end">acc_ovf_q</text>
+  <path class="w" d="M2244.7,765 H2304.7"/>
+  <text x="2240.7" y="769" text-anchor="end">n_sat_err</text>
+  <path class="w" d="M2370,745 H2550"/>
+  <text x="2550" y="741" text-anchor="end">num_err</text>
+  <text x="1972" y="674" text-anchor="end">n_re[6:0]</text>
+  <path class="w" d="M1980,670 H2550"/>
+  <text x="2550" y="666" text-anchor="end">d_n_re[6:0]</text>
+</svg>

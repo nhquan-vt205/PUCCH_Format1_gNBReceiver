@@ -1,8 +1,65 @@
+# ============================================================================
+# Allow-list: only HDL sources, simulation scripts, docs, AI skills and the
+# top-level Markdown / README files are committed. Everything else is ignored.
+# ============================================================================
+
+# 1. Project root: ignore everything ...
+/*
+
+# ... except these
+!/.gitignore
+!/*.md
+!/README*
+!/rtl/
+!/tb/
+!/testcases/
+!/sim/
+!/doc/
+!/.claude/
+!/.agents/
+
+# 2. rtl/, tb/, testcases/: HDL source code only
+/rtl/*
+!/rtl/*.v
+!/rtl/*.vh
+!/rtl/*.sv
+!/rtl/*.svh
+/tb/*
+!/tb/*.v
+!/tb/*.vh
+!/tb/*.sv
+!/tb/*.svh
+/testcases/*
+!/testcases/*.v
+!/testcases/*.vh
+!/testcases/*.sv
+!/testcases/*.svh
+
+# 3. sim/: hand-written scripts only; every Makefile / simulator output
+#    (work, log, coverage, covhtmlreport, *.wlf, *.ucdb, run_test.v, ...) is ignored
+/sim/*
+!/sim/Makefile
+!/sim/*.f
+!/sim/pat.list
+!/sim/*.csh
+!/sim/*.tcl
+!/sim/script/
+
+# 4. doc/: generated reports
+/doc/report/
+# MATLAB raw grid (~250 MB): over the GitHub 100 MB file limit
+/doc/database/rx_grid_SNR_*.csv
+
+# 5. AI folders: skills only
+/.claude/*
+!/.claude/skills/
+/.agents/*
+!/.agents/skills/
+
+# 6. Anywhere: tool / editor leftovers
 node_modules/
-sim/**/logs/
-sim/**/obj_dir/
-*.vvp
-*.vcd
-*.fsdb
-obj_dir/
-work/
+__pycache__/
+*.pyc
+*~
+*.swp
+.DS_Store

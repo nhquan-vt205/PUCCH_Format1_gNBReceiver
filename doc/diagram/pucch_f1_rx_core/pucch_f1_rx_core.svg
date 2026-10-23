@@ -1,0 +1,524 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2740" height="1259" viewBox="0 0 2740 1259"
+     font-family="Calibri, Arial, sans-serif" font-size="13">
+  <!-- module : pucch_f1_rx_core -->
+  <!-- stage  : 2 - diagram L0 (child blocks, no glue logic) -->
+  <!-- source : doc/spec/architecture/pucch_f1_rx_core_spec.md + doc/spec/interface/pucch_f1_rx_core_interface.md + child port tables -->
+  <desc id="model"><![CDATA[
+// clk / rst_n go to every instance (not drawn). No glue logic: every net is one child port or one top port.
+// Pin label = child port; label at the far end of a short wire = net name; nets with the same label are connected.
+// Debug outputs left open: u_lowpapr.phase_n, u_lowpapr.phase_l_abs, u_mod_cand.cand_phase, u_rx_inverse.d_n_re.
+[u_ctrl]
+pucch_f1_ctrl u_ctrl (.cfg_valid(cfg_valid), .cfg_m_bit(cfg_m_bit), .cfg_nsymb(cfg_nsymb), .cfg_start_symbol(cfg_start_symbol), .cfg_intra_slot_hopping(cfg_intra_slot_hopping), .cfg_group_hopping_mode(cfg_group_hopping_mode), .cfg_n_id(cfg_n_id), .cfg_m0(cfg_m0), .cfg_occ_i(cfg_occ_i), .cfg_slot_idx(cfg_slot_idx), .y_valid(y_valid), .y_sample_q(y_sample_q), .y_first(y_first), .y_last(y_last), .res_ready(res_ready), .gen_ready(gen_ready), .lut_err(lut_err), .phase_valid(phase_valid), .phase_sample_q(phase_sample_q), .phase_first(phase_first), .phase_last(phase_last), .occ_err(occ_err), .acc_done(acc_done), .num_err(num_err), .d_valid(d_valid), .d_ready(d_ready), .tbl_valid(tbl_valid), .cand_err(cand_err), .mle_valid(mle_valid), .mle_candidate_idx(mle_candidate_idx), .mle_uci_bits(mle_uci_bits), .mle_d_rx_i(mle_d_rx_i), .mle_d_rx_q(mle_d_rx_q), .mle_metric_best(mle_metric_best), .mle_metric_second(mle_metric_second), .mle_metric_gap(mle_metric_gap), .cfg_ready(cfg_ready), .busy(busy), .y_ready(y_ready), .res_valid(res_valid), .res_error(res_error), .res_error_code(res_error_code), .res_m_bit(res_m_bit), .res_candidate_idx(res_candidate_idx), .res_uci_bits(res_uci_bits), .res_d_rx_i(res_d_rx_i), .res_d_rx_q(res_d_rx_q), .res_metric_best(res_metric_best), .res_metric_second(res_metric_second), .res_metric_gap(res_metric_gap), .m_bit(m_bit), .n_id(n_id), .gh_mode(gh_mode), .slot_idx(slot_idx), .start_symbol(start_symbol), .hopping(hopping), .m0(m0), .occ_i(occ_i), .n_re(n_re), .n_sf0(n_sf0), .n_sf1(n_sf1), .txn_start(txn_start), .txn_clr(txn_clr), .phase_ready(phase_ready), .join_fire(join_fire));
+[u_lowpapr]
+pucch_f1_lowpapr_phase_gen u_lowpapr (.txn_start(txn_start), .txn_clr(txn_clr), .n_id(n_id), .gh_mode(gh_mode), .slot_idx(slot_idx), .start_symbol(start_symbol), .hopping(hopping), .m0(m0), .n_sf0(n_sf0), .n_re(n_re), .phase_ready(phase_ready), .gen_ready(gen_ready), .lut_err(lut_err), .phase_valid(phase_valid), .r_phase(r_phase), .phase_sample_q(phase_sample_q), .phase_hop(phase_hop), .phase_m(phase_m), .phase_n(), .phase_l_abs(), .phase_first(phase_first), .phase_last(phase_last));
+[u_mod_cand]
+pucch_f1_mod_candidates u_mod_cand (.txn_start(txn_start), .txn_clr(txn_clr), .m_bit(m_bit), .cand_ready(cand_ready), .cand_valid(cand_valid), .cand_mask(cand_mask), .cand_m_bit(cand_m_bit), .cand_i(cand_i), .cand_q(cand_q), .cand_phase(), .cand_bits(cand_bits));
+[u_rx_inverse]
+pucch_f1_rx_inverse u_rx_inverse (.txn_clr(txn_clr), .join_fire(join_fire), .y_i(y_i), .y_q(y_q), .r_phase(r_phase), .phase_sample_q(phase_sample_q), .phase_hop(phase_hop), .phase_m(phase_m), .phase_first(phase_first), .phase_last(phase_last), .occ_i(occ_i), .n_sf0(n_sf0), .n_sf1(n_sf1), .n_re(n_re), .d_ready(d_ready), .occ_err(occ_err), .acc_done(acc_done), .num_err(num_err), .d_valid(d_valid), .d_i(d_i), .d_q(d_q), .d_n_re());
+[u_mle]
+pucch_f1_scalar_mle u_mle (.txn_clr(txn_clr), .m_bit(m_bit), .cand_valid(cand_valid), .cand_mask(cand_mask), .cand_m_bit(cand_m_bit), .cand_i(cand_i), .cand_q(cand_q), .cand_bits(cand_bits), .d_valid(d_valid), .d_i(d_i), .d_q(d_q), .cand_ready(cand_ready), .tbl_valid(tbl_valid), .cand_err(cand_err), .d_ready(d_ready), .mle_valid(mle_valid), .mle_candidate_idx(mle_candidate_idx), .mle_uci_bits(mle_uci_bits), .mle_d_rx_i(mle_d_rx_i), .mle_d_rx_q(mle_d_rx_q), .mle_metric_best(mle_metric_best), .mle_metric_second(mle_metric_second), .mle_metric_gap(mle_metric_gap));
+]]></desc>
+  <style>
+    .w{fill:none;stroke:#000;stroke-width:1.5}
+    .s{fill:#fff;stroke:#000;stroke-width:1.5}
+    .dot{fill:#000}
+    text{fill:#000}
+  </style>
+  <rect width="100%" height="100%" fill="#fff"/>
+  <g id="u_ctrl">
+  <rect class="s" x="540" y="40" width="200" height="925"/>
+  <text x="640" y="497.5" text-anchor="middle">u_ctrl</text>
+  <text x="640" y="515.5" text-anchor="middle">pucch_f1_ctrl</text>
+  </g>
+  <text x="536" y="61" text-anchor="end">cfg_valid</text>
+  <text x="536" y="86" text-anchor="end">cfg_m_bit</text>
+  <text x="536" y="111" text-anchor="end">cfg_nsymb</text>
+  <text x="536" y="136" text-anchor="end">cfg_start_symbol</text>
+  <text x="536" y="161" text-anchor="end">cfg_intra_slot_hopping</text>
+  <text x="536" y="186" text-anchor="end">cfg_group_hopping_mode</text>
+  <text x="536" y="211" text-anchor="end">cfg_n_id</text>
+  <text x="536" y="236" text-anchor="end">cfg_m0</text>
+  <text x="536" y="261" text-anchor="end">cfg_occ_i</text>
+  <text x="536" y="286" text-anchor="end">cfg_slot_idx</text>
+  <text x="536" y="311" text-anchor="end">y_valid</text>
+  <text x="536" y="336" text-anchor="end">y_sample_q</text>
+  <text x="536" y="361" text-anchor="end">y_first</text>
+  <text x="536" y="386" text-anchor="end">y_last</text>
+  <text x="536" y="411" text-anchor="end">res_ready</text>
+  <text x="536" y="436" text-anchor="end">gen_ready</text>
+  <text x="536" y="461" text-anchor="end">lut_err</text>
+  <text x="536" y="486" text-anchor="end">phase_valid</text>
+  <text x="536" y="511" text-anchor="end">phase_sample_q</text>
+  <text x="536" y="536" text-anchor="end">phase_first</text>
+  <text x="536" y="561" text-anchor="end">phase_last</text>
+  <text x="536" y="586" text-anchor="end">occ_err</text>
+  <text x="536" y="611" text-anchor="end">acc_done</text>
+  <text x="536" y="636" text-anchor="end">num_err</text>
+  <text x="536" y="661" text-anchor="end">d_valid</text>
+  <text x="536" y="686" text-anchor="end">d_ready</text>
+  <text x="536" y="711" text-anchor="end">tbl_valid</text>
+  <text x="536" y="736" text-anchor="end">cand_err</text>
+  <text x="536" y="761" text-anchor="end">mle_valid</text>
+  <text x="536" y="786" text-anchor="end">mle_candidate_idx</text>
+  <text x="536" y="811" text-anchor="end">mle_uci_bits</text>
+  <text x="536" y="836" text-anchor="end">mle_d_rx_i</text>
+  <text x="536" y="861" text-anchor="end">mle_d_rx_q</text>
+  <text x="536" y="886" text-anchor="end">mle_metric_best</text>
+  <text x="536" y="911" text-anchor="end">mle_metric_second</text>
+  <text x="536" y="936" text-anchor="end">mle_metric_gap</text>
+  <text x="744" y="61">cfg_ready</text>
+  <text x="744" y="86">busy</text>
+  <text x="744" y="111">y_ready</text>
+  <text x="744" y="136">res_valid</text>
+  <text x="744" y="161">res_error</text>
+  <text x="744" y="186">res_error_code</text>
+  <text x="744" y="211">res_m_bit</text>
+  <text x="744" y="236">res_candidate_idx</text>
+  <text x="744" y="261">res_uci_bits</text>
+  <text x="744" y="286">res_d_rx_i</text>
+  <text x="744" y="311">res_d_rx_q</text>
+  <text x="744" y="336">res_metric_best</text>
+  <text x="744" y="361">res_metric_second</text>
+  <text x="744" y="386">res_metric_gap</text>
+  <text x="744" y="411">m_bit</text>
+  <text x="744" y="436">n_id</text>
+  <text x="744" y="461">gh_mode</text>
+  <text x="744" y="486">slot_idx</text>
+  <text x="744" y="511">start_symbol</text>
+  <text x="744" y="536">hopping</text>
+  <text x="744" y="561">m0</text>
+  <text x="744" y="586">occ_i</text>
+  <text x="744" y="611">n_re</text>
+  <text x="744" y="636">n_sf0</text>
+  <text x="744" y="661">n_sf1</text>
+  <text x="744" y="686">txn_start</text>
+  <text x="744" y="711">txn_clr</text>
+  <text x="744" y="736">phase_ready</text>
+  <text x="744" y="761">join_fire</text>
+  <text x="242" y="69" text-anchor="end">cfg_valid</text>
+  <path class="w" d="M250,65 H540"/>
+  <text x="242" y="94" text-anchor="end">cfg_m_bit[1:0]</text>
+  <path class="w" d="M250,90 H540"/>
+  <text x="242" y="119" text-anchor="end">cfg_nsymb[3:0]</text>
+  <path class="w" d="M250,115 H540"/>
+  <text x="242" y="144" text-anchor="end">cfg_start_symbol[3:0]</text>
+  <path class="w" d="M250,140 H540"/>
+  <text x="242" y="169" text-anchor="end">cfg_intra_slot_hopping</text>
+  <path class="w" d="M250,165 H540"/>
+  <text x="242" y="194" text-anchor="end">cfg_group_hopping_mode[1:0]</text>
+  <path class="w" d="M250,190 H540"/>
+  <text x="242" y="219" text-anchor="end">cfg_n_id[9:0]</text>
+  <path class="w" d="M250,215 H540"/>
+  <text x="242" y="244" text-anchor="end">cfg_m0[3:0]</text>
+  <path class="w" d="M250,240 H540"/>
+  <text x="242" y="269" text-anchor="end">cfg_occ_i[2:0]</text>
+  <path class="w" d="M250,265 H540"/>
+  <text x="242" y="294" text-anchor="end">cfg_slot_idx[4:0]</text>
+  <path class="w" d="M250,290 H540"/>
+  <text x="242" y="319" text-anchor="end">y_valid</text>
+  <path class="w" d="M250,315 H540"/>
+  <text x="242" y="344" text-anchor="end">y_sample_q[6:0]</text>
+  <path class="w" d="M250,340 H540"/>
+  <text x="242" y="369" text-anchor="end">y_first</text>
+  <path class="w" d="M250,365 H540"/>
+  <text x="242" y="394" text-anchor="end">y_last</text>
+  <path class="w" d="M250,390 H540"/>
+  <text x="242" y="419" text-anchor="end">res_ready</text>
+  <path class="w" d="M250,415 H540"/>
+  <path class="w" d="M410,440 H540"/>
+  <text x="406" y="444" text-anchor="end">gen_ready</text>
+  <path class="w" d="M410,465 H540"/>
+  <text x="406" y="469" text-anchor="end">lut_err</text>
+  <path class="w" d="M410,490 H540"/>
+  <text x="406" y="494" text-anchor="end">phase_valid</text>
+  <path class="w" d="M410,515 H540"/>
+  <text x="406" y="519" text-anchor="end">phase_sample_q</text>
+  <path class="w" d="M410,540 H540"/>
+  <text x="406" y="544" text-anchor="end">phase_first</text>
+  <path class="w" d="M410,565 H540"/>
+  <text x="406" y="569" text-anchor="end">phase_last</text>
+  <path class="w" d="M410,590 H540"/>
+  <text x="406" y="594" text-anchor="end">occ_err</text>
+  <path class="w" d="M410,615 H540"/>
+  <text x="406" y="619" text-anchor="end">acc_done</text>
+  <path class="w" d="M410,640 H540"/>
+  <text x="406" y="644" text-anchor="end">num_err</text>
+  <path class="w" d="M410,665 H540"/>
+  <text x="406" y="669" text-anchor="end">d_valid</text>
+  <path class="w" d="M410,690 H540"/>
+  <text x="406" y="694" text-anchor="end">d_ready</text>
+  <path class="w" d="M410,715 H540"/>
+  <text x="406" y="719" text-anchor="end">tbl_valid</text>
+  <path class="w" d="M410,740 H540"/>
+  <text x="406" y="744" text-anchor="end">cand_err</text>
+  <path class="w" d="M410,765 H540"/>
+  <text x="406" y="769" text-anchor="end">mle_valid</text>
+  <path class="w" d="M410,790 H540"/>
+  <text x="406" y="794" text-anchor="end">mle_candidate_idx</text>
+  <path class="w" d="M410,815 H540"/>
+  <text x="406" y="819" text-anchor="end">mle_uci_bits</text>
+  <path class="w" d="M410,840 H540"/>
+  <text x="406" y="844" text-anchor="end">mle_d_rx_i</text>
+  <path class="w" d="M410,865 H540"/>
+  <text x="406" y="869" text-anchor="end">mle_d_rx_q</text>
+  <path class="w" d="M410,890 H540"/>
+  <text x="406" y="894" text-anchor="end">mle_metric_best</text>
+  <path class="w" d="M410,915 H540"/>
+  <text x="406" y="919" text-anchor="end">mle_metric_second</text>
+  <path class="w" d="M410,940 H540"/>
+  <text x="406" y="944" text-anchor="end">mle_metric_gap</text>
+  <path class="w" d="M740,65 H870"/>
+  <text x="874" y="69">cfg_ready</text>
+  <path class="w" d="M740,90 H870"/>
+  <text x="874" y="94">busy</text>
+  <path class="w" d="M740,115 H870"/>
+  <text x="874" y="119">y_ready</text>
+  <path class="w" d="M740,140 H870"/>
+  <text x="874" y="144">res_valid</text>
+  <path class="w" d="M740,165 H870"/>
+  <text x="874" y="169">res_error</text>
+  <path class="w" d="M740,190 H870"/>
+  <text x="874" y="194">res_error_code</text>
+  <path class="w" d="M740,215 H870"/>
+  <text x="874" y="219">res_m_bit</text>
+  <path class="w" d="M740,240 H870"/>
+  <text x="874" y="244">res_candidate_idx</text>
+  <path class="w" d="M740,265 H870"/>
+  <text x="874" y="269">res_uci_bits</text>
+  <path class="w" d="M740,290 H870"/>
+  <text x="874" y="294">res_d_rx_i</text>
+  <path class="w" d="M740,315 H870"/>
+  <text x="874" y="319">res_d_rx_q</text>
+  <path class="w" d="M740,340 H870"/>
+  <text x="874" y="344">res_metric_best</text>
+  <path class="w" d="M740,365 H870"/>
+  <text x="874" y="369">res_metric_second</text>
+  <path class="w" d="M740,390 H870"/>
+  <text x="874" y="394">res_metric_gap</text>
+  <path class="w" d="M740,415 H870"/>
+  <text x="874" y="419">m_bit</text>
+  <path class="w" d="M740,440 H870"/>
+  <text x="874" y="444">n_id</text>
+  <path class="w" d="M740,465 H870"/>
+  <text x="874" y="469">gh_mode</text>
+  <path class="w" d="M740,490 H870"/>
+  <text x="874" y="494">slot_idx</text>
+  <path class="w" d="M740,515 H870"/>
+  <text x="874" y="519">start_symbol</text>
+  <path class="w" d="M740,540 H870"/>
+  <text x="874" y="544">hopping</text>
+  <path class="w" d="M740,565 H870"/>
+  <text x="874" y="569">m0</text>
+  <path class="w" d="M740,590 H870"/>
+  <text x="874" y="594">occ_i</text>
+  <path class="w" d="M740,615 H870"/>
+  <text x="874" y="619">n_re</text>
+  <path class="w" d="M740,640 H870"/>
+  <text x="874" y="644">n_sf0</text>
+  <path class="w" d="M740,665 H870"/>
+  <text x="874" y="669">n_sf1</text>
+  <path class="w" d="M740,690 H870"/>
+  <text x="874" y="694">txn_start</text>
+  <path class="w" d="M740,715 H870"/>
+  <text x="874" y="719">txn_clr</text>
+  <path class="w" d="M740,740 H870"/>
+  <text x="874" y="744">phase_ready</text>
+  <path class="w" d="M740,765 H870"/>
+  <text x="874" y="769">join_fire</text>
+  <g id="u_lowpapr">
+  <rect class="s" x="1300" y="40" width="220" height="300"/>
+  <text x="1410" y="185" text-anchor="middle">u_lowpapr</text>
+  <text x="1410" y="203" text-anchor="middle">pucch_f1_lowpapr_phase_gen</text>
+  </g>
+  <text x="1296" y="61" text-anchor="end">txn_start</text>
+  <text x="1296" y="86" text-anchor="end">txn_clr</text>
+  <text x="1296" y="111" text-anchor="end">n_id</text>
+  <text x="1296" y="136" text-anchor="end">gh_mode</text>
+  <text x="1296" y="161" text-anchor="end">slot_idx</text>
+  <text x="1296" y="186" text-anchor="end">start_symbol</text>
+  <text x="1296" y="211" text-anchor="end">hopping</text>
+  <text x="1296" y="236" text-anchor="end">m0</text>
+  <text x="1296" y="261" text-anchor="end">n_sf0</text>
+  <text x="1296" y="286" text-anchor="end">n_re</text>
+  <text x="1296" y="311" text-anchor="end">phase_ready</text>
+  <text x="1524" y="61">gen_ready</text>
+  <text x="1524" y="86">lut_err</text>
+  <text x="1524" y="111">phase_valid</text>
+  <text x="1524" y="136">r_phase</text>
+  <text x="1524" y="161">phase_sample_q</text>
+  <text x="1524" y="186">phase_hop</text>
+  <text x="1524" y="211">phase_m</text>
+  <text x="1524" y="236">phase_n</text>
+  <text x="1524" y="261">phase_l_abs</text>
+  <text x="1524" y="286">phase_first</text>
+  <text x="1524" y="311">phase_last</text>
+  <path class="w" d="M1170,65 H1300"/>
+  <text x="1166" y="69" text-anchor="end">txn_start</text>
+  <path class="w" d="M1170,90 H1300"/>
+  <text x="1166" y="94" text-anchor="end">txn_clr</text>
+  <path class="w" d="M1170,115 H1300"/>
+  <text x="1166" y="119" text-anchor="end">n_id</text>
+  <path class="w" d="M1170,140 H1300"/>
+  <text x="1166" y="144" text-anchor="end">gh_mode</text>
+  <path class="w" d="M1170,165 H1300"/>
+  <text x="1166" y="169" text-anchor="end">slot_idx</text>
+  <path class="w" d="M1170,190 H1300"/>
+  <text x="1166" y="194" text-anchor="end">start_symbol</text>
+  <path class="w" d="M1170,215 H1300"/>
+  <text x="1166" y="219" text-anchor="end">hopping</text>
+  <path class="w" d="M1170,240 H1300"/>
+  <text x="1166" y="244" text-anchor="end">m0</text>
+  <path class="w" d="M1170,265 H1300"/>
+  <text x="1166" y="269" text-anchor="end">n_sf0</text>
+  <path class="w" d="M1170,290 H1300"/>
+  <text x="1166" y="294" text-anchor="end">n_re</text>
+  <path class="w" d="M1170,315 H1300"/>
+  <text x="1166" y="319" text-anchor="end">phase_ready</text>
+  <path class="w" d="M1520,65 H1650"/>
+  <text x="1654" y="69">gen_ready</text>
+  <path class="w" d="M1520,90 H1650"/>
+  <text x="1654" y="94">lut_err</text>
+  <path class="w" d="M1520,115 H1650"/>
+  <text x="1654" y="119">phase_valid</text>
+  <path class="w" d="M1520,140 H1650"/>
+  <text x="1654" y="144">r_phase</text>
+  <path class="w" d="M1520,165 H1650"/>
+  <text x="1654" y="169">phase_sample_q</text>
+  <path class="w" d="M1520,190 H1650"/>
+  <text x="1654" y="194">phase_hop</text>
+  <path class="w" d="M1520,215 H1650"/>
+  <text x="1654" y="219">phase_m</text>
+  <path class="w" d="M1520,240 H1650"/>
+  <text x="1654" y="244">open</text>
+  <path class="w" d="M1520,265 H1650"/>
+  <text x="1654" y="269">open</text>
+  <path class="w" d="M1520,290 H1650"/>
+  <text x="1654" y="294">phase_first</text>
+  <path class="w" d="M1520,315 H1650"/>
+  <text x="1654" y="319">phase_last</text>
+  <g id="u_mod_cand">
+  <rect class="s" x="1300" y="420" width="220" height="200"/>
+  <text x="1410" y="515" text-anchor="middle">u_mod_cand</text>
+  <text x="1410" y="533" text-anchor="middle">pucch_f1_mod_candidates</text>
+  </g>
+  <text x="1296" y="441" text-anchor="end">txn_start</text>
+  <text x="1296" y="466" text-anchor="end">txn_clr</text>
+  <text x="1296" y="491" text-anchor="end">m_bit</text>
+  <text x="1296" y="516" text-anchor="end">cand_ready</text>
+  <text x="1524" y="441">cand_valid</text>
+  <text x="1524" y="466">cand_mask</text>
+  <text x="1524" y="491">cand_m_bit</text>
+  <text x="1524" y="516">cand_i</text>
+  <text x="1524" y="541">cand_q</text>
+  <text x="1524" y="566">cand_phase</text>
+  <text x="1524" y="591">cand_bits</text>
+  <path class="w" d="M1170,445 H1300"/>
+  <text x="1166" y="449" text-anchor="end">txn_start</text>
+  <path class="w" d="M1170,470 H1300"/>
+  <text x="1166" y="474" text-anchor="end">txn_clr</text>
+  <path class="w" d="M1170,495 H1300"/>
+  <text x="1166" y="499" text-anchor="end">m_bit</text>
+  <path class="w" d="M1170,520 H1300"/>
+  <text x="1166" y="524" text-anchor="end">cand_ready</text>
+  <path class="w" d="M1520,445 H1650"/>
+  <text x="1654" y="449">cand_valid</text>
+  <path class="w" d="M1520,470 H1650"/>
+  <text x="1654" y="474">cand_mask</text>
+  <path class="w" d="M1520,495 H1650"/>
+  <text x="1654" y="499">cand_m_bit</text>
+  <path class="w" d="M1520,520 H1650"/>
+  <text x="1654" y="524">cand_i</text>
+  <path class="w" d="M1520,545 H1650"/>
+  <text x="1654" y="549">cand_q</text>
+  <path class="w" d="M1520,570 H1650"/>
+  <text x="1654" y="574">open</text>
+  <path class="w" d="M1520,595 H1650"/>
+  <text x="1654" y="599">cand_bits</text>
+  <g id="u_rx_inverse">
+  <rect class="s" x="2050" y="40" width="200" height="400"/>
+  <text x="2150" y="235" text-anchor="middle">u_rx_inverse</text>
+  <text x="2150" y="253" text-anchor="middle">pucch_f1_rx_inverse</text>
+  </g>
+  <text x="2046" y="61" text-anchor="end">txn_clr</text>
+  <text x="2046" y="86" text-anchor="end">join_fire</text>
+  <text x="2046" y="111" text-anchor="end">y_i</text>
+  <text x="2046" y="136" text-anchor="end">y_q</text>
+  <text x="2046" y="161" text-anchor="end">r_phase</text>
+  <text x="2046" y="186" text-anchor="end">phase_sample_q</text>
+  <text x="2046" y="211" text-anchor="end">phase_hop</text>
+  <text x="2046" y="236" text-anchor="end">phase_m</text>
+  <text x="2046" y="261" text-anchor="end">phase_first</text>
+  <text x="2046" y="286" text-anchor="end">phase_last</text>
+  <text x="2046" y="311" text-anchor="end">occ_i</text>
+  <text x="2046" y="336" text-anchor="end">n_sf0</text>
+  <text x="2046" y="361" text-anchor="end">n_sf1</text>
+  <text x="2046" y="386" text-anchor="end">n_re</text>
+  <text x="2046" y="411" text-anchor="end">d_ready</text>
+  <text x="2254" y="61">occ_err</text>
+  <text x="2254" y="86">acc_done</text>
+  <text x="2254" y="111">num_err</text>
+  <text x="2254" y="136">d_valid</text>
+  <text x="2254" y="161">d_i</text>
+  <text x="2254" y="186">d_q</text>
+  <text x="2254" y="211">d_n_re</text>
+  <path class="w" d="M1920,65 H2050"/>
+  <text x="1916" y="69" text-anchor="end">txn_clr</text>
+  <path class="w" d="M1920,90 H2050"/>
+  <text x="1916" y="94" text-anchor="end">join_fire</text>
+  <path class="w" d="M1920,115 H2050"/>
+  <text x="1916" y="119" text-anchor="end">y_i[15:0]</text>
+  <path class="w" d="M1920,140 H2050"/>
+  <text x="1916" y="144" text-anchor="end">y_q[15:0]</text>
+  <path class="w" d="M1920,165 H2050"/>
+  <text x="1916" y="169" text-anchor="end">r_phase</text>
+  <path class="w" d="M1920,190 H2050"/>
+  <text x="1916" y="194" text-anchor="end">phase_sample_q</text>
+  <path class="w" d="M1920,215 H2050"/>
+  <text x="1916" y="219" text-anchor="end">phase_hop</text>
+  <path class="w" d="M1920,240 H2050"/>
+  <text x="1916" y="244" text-anchor="end">phase_m</text>
+  <path class="w" d="M1920,265 H2050"/>
+  <text x="1916" y="269" text-anchor="end">phase_first</text>
+  <path class="w" d="M1920,290 H2050"/>
+  <text x="1916" y="294" text-anchor="end">phase_last</text>
+  <path class="w" d="M1920,315 H2050"/>
+  <text x="1916" y="319" text-anchor="end">occ_i</text>
+  <path class="w" d="M1920,340 H2050"/>
+  <text x="1916" y="344" text-anchor="end">n_sf0</text>
+  <path class="w" d="M1920,365 H2050"/>
+  <text x="1916" y="369" text-anchor="end">n_sf1</text>
+  <path class="w" d="M1920,390 H2050"/>
+  <text x="1916" y="394" text-anchor="end">n_re</text>
+  <path class="w" d="M1920,415 H2050"/>
+  <text x="1916" y="419" text-anchor="end">d_ready</text>
+  <path class="w" d="M2250,65 H2380"/>
+  <text x="2384" y="69">occ_err</text>
+  <path class="w" d="M2250,90 H2380"/>
+  <text x="2384" y="94">acc_done</text>
+  <path class="w" d="M2250,115 H2380"/>
+  <text x="2384" y="119">num_err</text>
+  <path class="w" d="M2250,140 H2380"/>
+  <text x="2384" y="144">d_valid</text>
+  <path class="w" d="M2250,165 H2380"/>
+  <text x="2384" y="169">d_i</text>
+  <path class="w" d="M2250,190 H2380"/>
+  <text x="2384" y="194">d_q</text>
+  <path class="w" d="M2250,215 H2380"/>
+  <text x="2384" y="219">open</text>
+  <g id="u_mle">
+  <rect class="s" x="2050" y="520" width="200" height="325"/>
+  <text x="2150" y="677.5" text-anchor="middle">u_mle</text>
+  <text x="2150" y="695.5" text-anchor="middle">pucch_f1_scalar_mle</text>
+  </g>
+  <text x="2046" y="541" text-anchor="end">txn_clr</text>
+  <text x="2046" y="566" text-anchor="end">m_bit</text>
+  <text x="2046" y="591" text-anchor="end">cand_valid</text>
+  <text x="2046" y="616" text-anchor="end">cand_mask</text>
+  <text x="2046" y="641" text-anchor="end">cand_m_bit</text>
+  <text x="2046" y="666" text-anchor="end">cand_i</text>
+  <text x="2046" y="691" text-anchor="end">cand_q</text>
+  <text x="2046" y="716" text-anchor="end">cand_bits</text>
+  <text x="2046" y="741" text-anchor="end">d_valid</text>
+  <text x="2046" y="766" text-anchor="end">d_i</text>
+  <text x="2046" y="791" text-anchor="end">d_q</text>
+  <text x="2254" y="541">cand_ready</text>
+  <text x="2254" y="566">tbl_valid</text>
+  <text x="2254" y="591">cand_err</text>
+  <text x="2254" y="616">d_ready</text>
+  <text x="2254" y="641">mle_valid</text>
+  <text x="2254" y="666">mle_candidate_idx</text>
+  <text x="2254" y="691">mle_uci_bits</text>
+  <text x="2254" y="716">mle_d_rx_i</text>
+  <text x="2254" y="741">mle_d_rx_q</text>
+  <text x="2254" y="766">mle_metric_best</text>
+  <text x="2254" y="791">mle_metric_second</text>
+  <text x="2254" y="816">mle_metric_gap</text>
+  <path class="w" d="M1920,545 H2050"/>
+  <text x="1916" y="549" text-anchor="end">txn_clr</text>
+  <path class="w" d="M1920,570 H2050"/>
+  <text x="1916" y="574" text-anchor="end">m_bit</text>
+  <path class="w" d="M1920,595 H2050"/>
+  <text x="1916" y="599" text-anchor="end">cand_valid</text>
+  <path class="w" d="M1920,620 H2050"/>
+  <text x="1916" y="624" text-anchor="end">cand_mask</text>
+  <path class="w" d="M1920,645 H2050"/>
+  <text x="1916" y="649" text-anchor="end">cand_m_bit</text>
+  <path class="w" d="M1920,670 H2050"/>
+  <text x="1916" y="674" text-anchor="end">cand_i</text>
+  <path class="w" d="M1920,695 H2050"/>
+  <text x="1916" y="699" text-anchor="end">cand_q</text>
+  <path class="w" d="M1920,720 H2050"/>
+  <text x="1916" y="724" text-anchor="end">cand_bits</text>
+  <path class="w" d="M1920,745 H2050"/>
+  <text x="1916" y="749" text-anchor="end">d_valid</text>
+  <path class="w" d="M1920,770 H2050"/>
+  <text x="1916" y="774" text-anchor="end">d_i</text>
+  <path class="w" d="M1920,795 H2050"/>
+  <text x="1916" y="799" text-anchor="end">d_q</text>
+  <path class="w" d="M2250,545 H2380"/>
+  <text x="2384" y="549">cand_ready</text>
+  <path class="w" d="M2250,570 H2380"/>
+  <text x="2384" y="574">tbl_valid</text>
+  <path class="w" d="M2250,595 H2380"/>
+  <text x="2384" y="599">cand_err</text>
+  <path class="w" d="M2250,620 H2380"/>
+  <text x="2384" y="624">d_ready</text>
+  <path class="w" d="M2250,645 H2380"/>
+  <text x="2384" y="649">mle_valid</text>
+  <path class="w" d="M2250,670 H2380"/>
+  <text x="2384" y="674">mle_candidate_idx</text>
+  <path class="w" d="M2250,695 H2380"/>
+  <text x="2384" y="699">mle_uci_bits</text>
+  <path class="w" d="M2250,720 H2380"/>
+  <text x="2384" y="724">mle_d_rx_i</text>
+  <path class="w" d="M2250,745 H2380"/>
+  <text x="2384" y="749">mle_d_rx_q</text>
+  <path class="w" d="M2250,770 H2380"/>
+  <text x="2384" y="774">mle_metric_best</text>
+  <path class="w" d="M2250,795 H2380"/>
+  <text x="2384" y="799">mle_metric_second</text>
+  <path class="w" d="M2250,820 H2380"/>
+  <text x="2384" y="824">mle_metric_gap</text>
+  <path class="w" d="M2540,900 H2700"/>
+  <text x="2536" y="904" text-anchor="end">cfg_ready</text>
+  <text x="2700" y="896" text-anchor="end">cfg_ready</text>
+  <path class="w" d="M2540,925 H2700"/>
+  <text x="2536" y="929" text-anchor="end">busy</text>
+  <text x="2700" y="921" text-anchor="end">busy</text>
+  <path class="w" d="M2540,950 H2700"/>
+  <text x="2536" y="954" text-anchor="end">y_ready</text>
+  <text x="2700" y="946" text-anchor="end">y_ready</text>
+  <path class="w" d="M2540,975 H2700"/>
+  <text x="2536" y="979" text-anchor="end">res_valid</text>
+  <text x="2700" y="971" text-anchor="end">res_valid</text>
+  <path class="w" d="M2540,1000 H2700"/>
+  <text x="2536" y="1004" text-anchor="end">res_error</text>
+  <text x="2700" y="996" text-anchor="end">res_error</text>
+  <path class="w" d="M2540,1025 H2700"/>
+  <text x="2536" y="1029" text-anchor="end">res_error_code</text>
+  <text x="2700" y="1021" text-anchor="end">res_error_code[3:0]</text>
+  <path class="w" d="M2540,1050 H2700"/>
+  <text x="2536" y="1054" text-anchor="end">res_m_bit</text>
+  <text x="2700" y="1046" text-anchor="end">res_m_bit[1:0]</text>
+  <path class="w" d="M2540,1075 H2700"/>
+  <text x="2536" y="1079" text-anchor="end">res_candidate_idx</text>
+  <text x="2700" y="1071" text-anchor="end">res_candidate_idx[1:0]</text>
+  <path class="w" d="M2540,1100 H2700"/>
+  <text x="2536" y="1104" text-anchor="end">res_uci_bits</text>
+  <text x="2700" y="1096" text-anchor="end">res_uci_bits[1:0]</text>
+  <path class="w" d="M2540,1125 H2700"/>
+  <text x="2536" y="1129" text-anchor="end">res_d_rx_i</text>
+  <text x="2700" y="1121" text-anchor="end">res_d_rx_i[25:0]</text>
+  <path class="w" d="M2540,1150 H2700"/>
+  <text x="2536" y="1154" text-anchor="end">res_d_rx_q</text>
+  <text x="2700" y="1146" text-anchor="end">res_d_rx_q[25:0]</text>
+  <path class="w" d="M2540,1175 H2700"/>
+  <text x="2536" y="1179" text-anchor="end">res_metric_best</text>
+  <text x="2700" y="1171" text-anchor="end">res_metric_best[42:0]</text>
+  <path class="w" d="M2540,1200 H2700"/>
+  <text x="2536" y="1204" text-anchor="end">res_metric_second</text>
+  <text x="2700" y="1196" text-anchor="end">res_metric_second[42:0]</text>
+  <path class="w" d="M2540,1225 H2700"/>
+  <text x="2536" y="1229" text-anchor="end">res_metric_gap</text>
+  <text x="2700" y="1221" text-anchor="end">res_metric_gap[43:0]</text>
+</svg>

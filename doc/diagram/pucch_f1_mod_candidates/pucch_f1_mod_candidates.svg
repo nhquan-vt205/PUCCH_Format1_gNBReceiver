@@ -1,0 +1,202 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="1126" viewBox="0 0 980 1126"
+     font-family="Calibri, Arial, sans-serif" font-size="13">
+  <!-- module : pucch_f1_mod_candidates -->
+  <!-- stage  : 2 - diagram L2 (full gate level) -->
+  <!-- source : doc/spec/architecture/pucch_f1_mod_candidates_spec.md -->
+  <desc id="model"><![CDATA[
+// clk rising edge; rst_n synchronous active-low. Nets with the same label are connected.
+// Flattened arrays: entry k of cand_i/cand_q/cand_phase = [16k+15:16k], of cand_bits = [2k+1:2k].
+// 23170 = 16'h5A82, -23170 = 16'hA57E (signed F15).
+cand_valid = cand_valid_q;
+cand_m_bit = m_bit_q;
+[mux_mbit]
+m_bit_d = txn_start ? m_bit : m_bit_q;
+[reg_mbit]
+m_bit_q <= m_bit_d @(rst=2'd0);
+[gate_hs]
+tbl_hs = cand_valid_q & cand_ready;
+[mux_cvhs]
+cv_hold = tbl_hs ? 1'b0 : cand_valid_q;               // one table transfer per transaction
+[mux_cvst]
+cv_set = txn_start ? 1'b1 : cv_hold;
+[mux_cvclr]
+cand_valid_d = txn_clr ? 1'b0 : cv_set;                // txn_clr has priority
+[reg_cv]
+cand_valid_q <= cand_valid_d @(rst=1'b0);
+[op_isq]
+is_qpsk = (m_bit_q == 2'd2);                          // else M_bit = 1 table
+[mux_mask]
+cand_mask  = is_qpsk ? 4'b1111 : 4'b0011;
+[mux_ci]
+cand_i     = is_qpsk ? 64'hA57E_A57E_5A82_5A82 : 64'h0000_0000_A57E_5A82;
+[mux_cq]
+cand_q     = is_qpsk ? 64'hA57E_5A82_A57E_5A82 : 64'h0000_0000_A57E_5A82;
+[mux_ph]
+cand_phase = is_qpsk ? 64'hA000_6000_E000_2000 : 64'h0000_0000_A000_2000;
+[mux_bits]
+cand_bits  = is_qpsk ? 8'b11_01_10_00 : 8'b00_00_01_00;  // packed {b1,b0} per k, not binary k
+]]></desc>
+  <style>
+    .w{fill:none;stroke:#000;stroke-width:1.5}
+    .s{fill:#fff;stroke:#000;stroke-width:1.5}
+    .dot{fill:#000}
+    text{fill:#000}
+  </style>
+  <rect width="100%" height="100%" fill="#fff"/>
+  <g id="mux_mbit">
+  <path class="s" d="M220,40 L250,55 L250,95 L220,110 Z"/>
+  <text x="225" y="68">0</text>
+  <text x="225" y="98">1</text>
+  </g>
+  <text x="112" y="98" text-anchor="end">m_bit[1:0]</text>
+  <path class="w" d="M120,94 H220"/>
+  <path class="w" d="M180,64 H220"/>
+  <text x="176" y="68" text-anchor="end">m_bit_q</text>
+  <path class="w" d="M235,127.5 V102.5"/>
+  <text x="235" y="141.5" text-anchor="middle">txn_start</text>
+  <g id="reg_mbit">
+  <rect class="s" x="326" y="14" width="70" height="110"/>
+  <rect class="s" x="320" y="20" width="70" height="110"/>
+  <path class="w" d="M320,100 L334,110 L320,120"/>
+  <circle class="s" cx="355" cy="135" r="5"/>
+  <text x="355" y="70" text-anchor="middle">m_bit_q</text>
+  <text x="355" y="86" text-anchor="middle">[1:0]</text>
+  </g>
+  <text x="355" y="157" text-anchor="middle">rst_n</text>
+  <path class="w" d="M250,75 H320"/>
+  <path class="w" d="M396,75 H930"/>
+  <circle class="dot" cx="430" cy="75" r="4"/>
+  <text x="436" y="71">m_bit_q[1:0]</text>
+  <text x="930" y="71" text-anchor="end">cand_m_bit[1:0]</text>
+  <g id="op_isq">
+  <ellipse class="s" cx="520" cy="145" rx="45" ry="18"/>
+  <text x="520" y="150" text-anchor="middle">== 2'd2</text>
+  </g>
+  <path class="w" d="M430,75 V145 H475"/>
+  <path class="w" d="M565,145 H595"/>
+  <text x="599" y="149">is_qpsk</text>
+  <text x="112" y="264" text-anchor="end">txn_start</text>
+  <path class="w" d="M120,260 H170"/>
+  <text x="174" y="264">txn_start</text>
+  <text x="112" y="294" text-anchor="end">txn_clr</text>
+  <path class="w" d="M120,290 H170"/>
+  <text x="174" y="294">txn_clr</text>
+  <text x="112" y="324" text-anchor="end">cand_ready</text>
+  <path class="w" d="M120,320 H170"/>
+  <text x="174" y="324">cand_ready</text>
+  <g id="gate_hs">
+  <path class="s" d="M230,370 H260 A25,25 0 0 1 260,420 H230 Z"/>
+  </g>
+  <path class="w" d="M190,385 H230"/>
+  <text x="186" y="389" text-anchor="end">cand_valid_q</text>
+  <path class="w" d="M190,405 H230"/>
+  <text x="186" y="409" text-anchor="end">cand_ready</text>
+  <g id="mux_cvhs">
+  <path class="s" d="M430,320 L460,335 L460,375 L430,390 Z"/>
+  <text x="435" y="348">0</text>
+  <text x="435" y="378">1</text>
+  </g>
+  <path class="w" d="M370,344 H430"/>
+  <text x="366" y="348" text-anchor="end">cand_valid_q</text>
+  <path class="w" d="M415,374 H430"/>
+  <text x="410" y="378" text-anchor="end">1'b0</text>
+  <path class="w" d="M285,395 H320 V412.5 H445 V382.5"/>
+  <text x="309" y="391">tbl_hs</text>
+  <g id="mux_cvst">
+  <path class="s" d="M530,331 L560,346 L560,386 L530,401 Z"/>
+  <text x="535" y="359">0</text>
+  <text x="535" y="389">1</text>
+  </g>
+  <path class="w" d="M460,355 H530"/>
+  <path class="w" d="M515,385 H530"/>
+  <text x="510" y="389" text-anchor="end">1'b1</text>
+  <path class="w" d="M545,418.5 V393.5"/>
+  <text x="545" y="432.5" text-anchor="middle">txn_start</text>
+  <g id="mux_cvclr">
+  <path class="s" d="M630,342 L660,357 L660,397 L630,412 Z"/>
+  <text x="635" y="370">0</text>
+  <text x="635" y="400">1</text>
+  </g>
+  <path class="w" d="M560,366 H630"/>
+  <path class="w" d="M615,396 H630"/>
+  <text x="610" y="400" text-anchor="end">1'b0</text>
+  <path class="w" d="M645,429.5 V404.5"/>
+  <text x="645" y="443.5" text-anchor="middle">txn_clr</text>
+  <g id="reg_cv">
+  <rect class="s" x="720" y="322" width="100" height="110"/>
+  <path class="w" d="M720,402 L734,412 L720,422"/>
+  <circle class="s" cx="770" cy="437" r="5"/>
+  <text x="770" y="381" text-anchor="middle">cand_valid_q</text>
+  </g>
+  <text x="770" y="459" text-anchor="middle">rst_n</text>
+  <path class="w" d="M660,377 H720"/>
+  <path class="w" d="M820,377 H930"/>
+  <text x="930" y="373" text-anchor="end">cand_valid</text>
+  <circle class="dot" cx="850" cy="377" r="4"/>
+  <text x="856" y="393">cand_valid_q</text>
+  <g id="mux_mask">
+  <path class="s" d="M420,520 L450,535 L450,575 L420,590 Z"/>
+  <text x="425" y="548">0</text>
+  <text x="425" y="578">1</text>
+  </g>
+  <path class="w" d="M405,544 H420"/>
+  <text x="400" y="548" text-anchor="end">4'b0011</text>
+  <path class="w" d="M405,574 H420"/>
+  <text x="400" y="578" text-anchor="end">4'b1111</text>
+  <path class="w" d="M435,602.5 V582.5"/>
+  <text x="435" y="616.5" text-anchor="middle">is_qpsk</text>
+  <path class="w" d="M450,555 H930"/>
+  <text x="930" y="551" text-anchor="end">cand_mask[3:0]</text>
+  <g id="mux_ci">
+  <path class="s" d="M420,640 L450,655 L450,695 L420,710 Z"/>
+  <text x="425" y="668">0</text>
+  <text x="425" y="698">1</text>
+  </g>
+  <path class="w" d="M405,664 H420"/>
+  <text x="400" y="668" text-anchor="end">64'h0000_0000_A57E_5A82</text>
+  <path class="w" d="M405,694 H420"/>
+  <text x="400" y="698" text-anchor="end">64'hA57E_A57E_5A82_5A82</text>
+  <path class="w" d="M435,722.5 V702.5"/>
+  <text x="435" y="736.5" text-anchor="middle">is_qpsk</text>
+  <path class="w" d="M450,675 H930"/>
+  <text x="930" y="671" text-anchor="end">cand_i[63:0]</text>
+  <g id="mux_cq">
+  <path class="s" d="M420,760 L450,775 L450,815 L420,830 Z"/>
+  <text x="425" y="788">0</text>
+  <text x="425" y="818">1</text>
+  </g>
+  <path class="w" d="M405,784 H420"/>
+  <text x="400" y="788" text-anchor="end">64'h0000_0000_A57E_5A82</text>
+  <path class="w" d="M405,814 H420"/>
+  <text x="400" y="818" text-anchor="end">64'hA57E_5A82_A57E_5A82</text>
+  <path class="w" d="M435,842.5 V822.5"/>
+  <text x="435" y="856.5" text-anchor="middle">is_qpsk</text>
+  <path class="w" d="M450,795 H930"/>
+  <text x="930" y="791" text-anchor="end">cand_q[63:0]</text>
+  <g id="mux_ph">
+  <path class="s" d="M420,880 L450,895 L450,935 L420,950 Z"/>
+  <text x="425" y="908">0</text>
+  <text x="425" y="938">1</text>
+  </g>
+  <path class="w" d="M405,904 H420"/>
+  <text x="400" y="908" text-anchor="end">64'h0000_0000_A000_2000</text>
+  <path class="w" d="M405,934 H420"/>
+  <text x="400" y="938" text-anchor="end">64'hA000_6000_E000_2000</text>
+  <path class="w" d="M435,962.5 V942.5"/>
+  <text x="435" y="976.5" text-anchor="middle">is_qpsk</text>
+  <path class="w" d="M450,915 H930"/>
+  <text x="930" y="911" text-anchor="end">cand_phase[63:0]</text>
+  <g id="mux_bits">
+  <path class="s" d="M420,1000 L450,1015 L450,1055 L420,1070 Z"/>
+  <text x="425" y="1028">0</text>
+  <text x="425" y="1058">1</text>
+  </g>
+  <path class="w" d="M405,1024 H420"/>
+  <text x="400" y="1028" text-anchor="end">8'b00_00_01_00</text>
+  <path class="w" d="M405,1054 H420"/>
+  <text x="400" y="1058" text-anchor="end">8'b11_01_10_00</text>
+  <path class="w" d="M435,1082.5 V1062.5"/>
+  <text x="435" y="1096.5" text-anchor="middle">is_qpsk</text>
+  <path class="w" d="M450,1035 H930"/>
+  <text x="930" y="1031" text-anchor="end">cand_bits[7:0]</text>
+</svg>

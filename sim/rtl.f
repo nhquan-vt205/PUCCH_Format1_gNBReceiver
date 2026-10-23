@@ -1,0 +1,9 @@
+../rtl/pucch_f1_gold_gen.v
+../rtl/pucch_f1_lowpapr_phase_gen.v
+../rtl/pucch_f1_cordic.v
+../rtl/pucch_f1_normalize.v
+../rtl/pucch_f1_rx_inverse.v
+../rtl/pucch_f1_mod_candidates.v
+../rtl/pucch_f1_scalar_mle.v
+../rtl/pucch_f1_ctrl.v
+../rtl/pucch_f1_rx_core.v

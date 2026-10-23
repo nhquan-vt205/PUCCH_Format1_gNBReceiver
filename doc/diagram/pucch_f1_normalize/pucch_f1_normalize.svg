@@ -1,0 +1,291 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1840" height="861" viewBox="0 0 1840 861"
+     font-family="Calibri, Arial, sans-serif" font-size="13">
+  <!-- module : pucch_f1_normalize -->
+  <!-- stage  : 2 - diagram L1 (gate level + approved blk_gain, blk_div, blk_round, cloud_next; level raised from L2: 2 multipliers 26x31 + 2 sequential dividers) -->
+  <!-- source : doc/spec/architecture/pucch_f1_normalize_spec.md -->
+  <desc id="model"><![CDATA[
+// clk rising edge; rst_n synchronous active-low: every register resets to 0. Nets with the same label are connected.
+// RNE_div(P, D), D > 0: a = |P|, v = a / D, r = a % D; v += (2r > D) | (2r == D & v[0]); result -v if P < 0.
+localparam ST_IDLE = 2'd0, ST_DIV = 2'd1, ST_ROUND = 2'd2, ST_OUT = 2'd3;
+d_valid = d_valid_q;
+d_i     = d_i_q;
+d_q     = d_q_q;
+sat_err = sat_err_q;
+[blk_gain]
+// per lane L in {i, q}: S = s_L (signed26 F15)
+p_L     = $signed(s_L) * $signed({1'b0, 30'd652032874});      // KINV_Q30, signed57 full precision
+pa_L    = |p_L|;  v_L = pa_L >> 30;  r_L = pa_L[29:0];
+zv_L    = v_L + ((r_L > 30'h2000_0000) | ((r_L == 30'h2000_0000) & v_L[0]));
+z_neg_L = p_L[56];                                            // sign of Z (Z = 0 -> magnitude 0)
+z_ovf_L = z_neg_L ? (zv_L > 2**25) : (zv_L > 2**25 - 1);      // Z outside signed26
+z_abs_L = zv_L[25:0];                                         // |Z|
+z_sat   = z_ovf_i | z_ovf_q;
+[cloud_next]
+st_idle = (state_q == ST_IDLE); st_div = (state_q == ST_DIV); st_round = (state_q == ST_ROUND); st_out = (state_q == ST_OUT);
+cnt_last = (cnt_q == 5'd25);
+load     = st_idle & start & ~z_sat & ~clr;
+step     = st_div & ~clr;
+rnd_ok   = st_round & ~d_sat & ~clr;
+state_d  = clr ? ST_IDLE :
+           st_idle  ? ((start & ~z_sat) ? ST_DIV : ST_IDLE) :
+           st_div   ? (cnt_last ? ST_ROUND : ST_DIV) :
+           st_round ? (d_sat ? ST_IDLE : ST_OUT) :
+           st_out   ? (d_ready ? ST_IDLE : ST_OUT) : ST_IDLE;
+d_valid_d = clr ? 1'b0 : rnd_ok ? 1'b1 : (st_out & d_ready) ? 1'b0 : d_valid_q;
+sat_err_d = ~clr & ((st_idle & start & z_sat) | (st_round & d_sat));
+[fsm_state]
+state_q <= state_d @(rst=ST_IDLE);
+[op_cinc]
+cnt_inc = cnt_q + 5'd1;
+[mux_cstep]
+cnt_run = st_div ? cnt_inc : cnt_q;
+[mux_cload]
+cnt_d = load ? 5'd0 : cnt_run;
+[reg_cnt]
+cnt_q <= cnt_d @(rst=5'd0);                                     // divider iteration 0..25
+[blk_div]
+// two restoring dividers in parallel, 1 quotient bit per clock, MSB first
+on load: a_L_q <= z_abs_L; z_neg_L_q <= z_neg_L; rem_L_q <= 8'd0; quo_L_q <= 26'd0;
+on step: rs_L = {rem_L_q[6:0], a_L_q[25]};                  // 8 bits, < 2 * n_re
+         ge_L = (rs_L >= {1'b0, n_re});
+         rem_L_q <= ge_L ? rs_L - {1'b0, n_re} : rs_L;
+         quo_L_q <= {quo_L_q[24:0], ge_L};  a_L_q <= {a_L_q[24:0], 1'b0};
+registers a_L_q[25:0], rem_L_q[7:0], quo_L_q[25:0], z_neg_L_q @(rst=0)
+[blk_round]
+inc_L   = ({rem_L_q, 1'b0} > {2'b0, n_re}) | (({rem_L_q, 1'b0} == {2'b0, n_re}) & quo_L_q[0]);
+dv_L    = {1'b0, quo_L_q} + inc_L;                            // 27 bits
+dsat_L  = z_neg_L_q ? (dv_L > 2**25) : (dv_L > 2**25 - 1);
+d_new_L = z_neg_L_q ? -dv_L[25:0] : dv_L[25:0];               // signed26 F15
+d_sat   = dsat_i | dsat_q;
+[mux_dout]
+d_out_d = rnd_ok ? {d_new_i, d_new_q} : {d_i_q, d_q_q};
+[reg_dout]
+{d_i_q, d_q_q} <= d_out_d @(rst=52'd0);
+[reg_dv]
+d_valid_q <= d_valid_d @(rst=1'b0);                            // held until d_ready
+[reg_se]
+sat_err_q <= sat_err_d @(rst=1'b0);                            // 1-clock pulse
+]]></desc>
+  <style>
+    .w{fill:none;stroke:#000;stroke-width:1.5}
+    .s{fill:#fff;stroke:#000;stroke-width:1.5}
+    .dot{fill:#000}
+    text{fill:#000}
+  </style>
+  <rect width="100%" height="100%" fill="#fff"/>
+  <g id="blk_gain">
+  <rect class="s" x="240" y="40" width="170" height="200"/>
+  <text x="325" y="144" text-anchor="middle">gain_rne</text>
+  </g>
+  <text x="236" y="86" text-anchor="end">s_i</text>
+  <text x="236" y="126" text-anchor="end">s_q</text>
+  <text x="414" y="66">z_abs_i[25:0]</text>
+  <text x="414" y="96">z_neg_i</text>
+  <text x="414" y="126">z_abs_q[25:0]</text>
+  <text x="414" y="156">z_neg_q</text>
+  <text x="414" y="206">z_sat</text>
+  <text x="112" y="94" text-anchor="end">s_i[25:0]</text>
+  <path class="w" d="M120,90 H240"/>
+  <text x="112" y="134" text-anchor="end">s_q[25:0]</text>
+  <path class="w" d="M120,130 H240"/>
+  <g id="blk_div">
+  <rect class="s" x="620" y="40" width="170" height="260"/>
+  <text x="705" y="174" text-anchor="middle">restoring_div</text>
+  </g>
+  <text x="616" y="66" text-anchor="end">z_abs_i</text>
+  <text x="616" y="96" text-anchor="end">z_neg_i</text>
+  <text x="616" y="126" text-anchor="end">z_abs_q</text>
+  <text x="616" y="156" text-anchor="end">z_neg_q</text>
+  <text x="616" y="206" text-anchor="end">load</text>
+  <text x="616" y="236" text-anchor="end">step</text>
+  <text x="794" y="66">quo_i_q[25:0]</text>
+  <text x="794" y="96">rem_i_q[7:0]</text>
+  <text x="794" y="126">z_neg_i_q</text>
+  <text x="794" y="156">quo_q_q[25:0]</text>
+  <text x="794" y="186">rem_q_q[7:0]</text>
+  <text x="794" y="216">z_neg_q_q</text>
+  <text x="709" y="316">n_re</text>
+  <path class="w" d="M410,70 H620"/>
+  <path class="w" d="M410,100 H620"/>
+  <path class="w" d="M410,130 H620"/>
+  <path class="w" d="M410,160 H620"/>
+  <path class="w" d="M410,210 H450"/>
+  <text x="454" y="214">z_sat</text>
+  <path class="w" d="M580,210 H620"/>
+  <text x="576" y="214" text-anchor="end">load</text>
+  <path class="w" d="M580,240 H620"/>
+  <text x="576" y="244" text-anchor="end">step</text>
+  <text x="112" y="344" text-anchor="end">n_re[6:0]</text>
+  <path class="w" d="M120,340 H705"/>
+  <path class="w" d="M705,340 V300"/>
+  <circle class="dot" cx="705" cy="340" r="4"/>
+  <g id="blk_round">
+  <rect class="s" x="1000" y="40" width="150" height="260"/>
+  <text x="1075" y="174" text-anchor="middle">rne_round</text>
+  </g>
+  <text x="996" y="66" text-anchor="end">quo_i</text>
+  <text x="996" y="96" text-anchor="end">rem_i</text>
+  <text x="996" y="126" text-anchor="end">neg_i</text>
+  <text x="996" y="156" text-anchor="end">quo_q</text>
+  <text x="996" y="186" text-anchor="end">rem_q</text>
+  <text x="996" y="216" text-anchor="end">neg_q</text>
+  <text x="1154" y="96">d_new_i[25:0]</text>
+  <text x="1154" y="156">d_new_q[25:0]</text>
+  <text x="1154" y="246">d_sat</text>
+  <text x="1079" y="316">n_re</text>
+  <path class="w" d="M790,70 H1000"/>
+  <path class="w" d="M790,100 H1000"/>
+  <path class="w" d="M790,130 H1000"/>
+  <path class="w" d="M790,160 H1000"/>
+  <path class="w" d="M790,190 H1000"/>
+  <path class="w" d="M790,220 H1000"/>
+  <path class="w" d="M705,340 H1075 V300"/>
+  <g id="bus_dnew">
+  <rect class="s" x="1300" y="80" width="25" height="100"/>
+  </g>
+  <path class="w" d="M1150,100 H1300"/>
+  <path class="w" d="M1150,160 H1300"/>
+  <text x="1296" y="96" text-anchor="end">[51:26]</text>
+  <text x="1296" y="156" text-anchor="end">[25:0]</text>
+  <path class="w" d="M1150,250 H1190"/>
+  <text x="1194" y="254">d_sat</text>
+  <g id="mux_dout">
+  <path class="s" d="M1380,106 L1410,121 L1410,161 L1380,176 Z"/>
+  <text x="1385" y="134">0</text>
+  <text x="1385" y="164">1</text>
+  </g>
+  <path class="w" d="M1325,130 H1340 V160 H1380"/>
+  <path class="w" d="M1365,85 V130 H1380"/>
+  <text x="1365" y="80" text-anchor="middle">{d_i_q,d_q_q}</text>
+  <path class="w" d="M1395,190.5 V168.5"/>
+  <text x="1395" y="204.5" text-anchor="middle">rnd_ok</text>
+  <g id="reg_dout">
+  <rect class="s" x="1466" y="80" width="100" height="110"/>
+  <rect class="s" x="1460" y="86" width="100" height="110"/>
+  <path class="w" d="M1460,166 L1474,176 L1460,186"/>
+  <circle class="s" cx="1510" cy="201" r="5"/>
+  <text x="1510" y="136" text-anchor="middle">d_i_q, d_q_q</text>
+  <text x="1510" y="152" text-anchor="middle">[51:0]</text>
+  </g>
+  <text x="1510" y="223" text-anchor="middle">rst_n</text>
+  <path class="w" d="M1410,141 H1460"/>
+  <g id="bus_dsp">
+  <rect class="s" x="1620" y="60" width="25" height="80"/>
+  </g>
+  <path class="w" d="M1566,141 H1620"/>
+  <path class="w" d="M1645,80 H1800"/>
+  <text x="1649" y="77">[51:26]</text>
+  <text x="1800" y="76" text-anchor="end">d_i[25:0]</text>
+  <path class="w" d="M1645,120 H1800"/>
+  <text x="1649" y="117">[25:0]</text>
+  <text x="1800" y="116" text-anchor="end">d_q[25:0]</text>
+  <text x="112" y="444" text-anchor="end">start</text>
+  <path class="w" d="M120,440 H300"/>
+  <text x="112" y="469" text-anchor="end">clr</text>
+  <path class="w" d="M120,465 H300"/>
+  <text x="112" y="494" text-anchor="end">d_ready</text>
+  <path class="w" d="M120,490 H300"/>
+  <path class="w" d="M250,515 H300"/>
+  <text x="246" y="519" text-anchor="end">z_sat</text>
+  <path class="w" d="M250,540 H300"/>
+  <text x="246" y="544" text-anchor="end">d_sat</text>
+  <path class="w" d="M250,565 H300"/>
+  <text x="246" y="569" text-anchor="end">cnt_q</text>
+  <path class="w" d="M250,590 H300"/>
+  <text x="246" y="594" text-anchor="end">state_q</text>
+  <path class="w" d="M300,440 H330"/>
+  <path class="w" d="M300,465 H330"/>
+  <path class="w" d="M300,490 H330"/>
+  <path class="w" d="M300,515 H330"/>
+  <path class="w" d="M300,540 H330"/>
+  <path class="w" d="M300,565 H330"/>
+  <path class="w" d="M300,590 H330"/>
+  <path class="w" d="M560,440 H600"/>
+  <path class="w" d="M560,470 H600"/>
+  <text x="604" y="474">load</text>
+  <path class="w" d="M560,500 H600"/>
+  <text x="604" y="504">step</text>
+  <path class="w" d="M560,530 H600"/>
+  <text x="604" y="534">rnd_ok</text>
+  <path class="w" d="M560,560 H600"/>
+  <text x="604" y="564">d_valid_d</text>
+  <path class="w" d="M560,590 H600"/>
+  <text x="604" y="594">sat_err_d</text>
+  <path class="w" d="M560,620 H600"/>
+  <text x="604" y="624">st_div</text>
+  <g id="cloud_next" transform="translate(320,400) scale(2.0,2.65)">
+  <path class="s" d="M20,60 a18,18 0 0 1 -2,-34 a22,22 0 0 1 38,-14 a22,22 0 0 1 40,2 a20,20 0 0 1 22,30 a18,18 0 0 1 -18,28 a22,22 0 0 1 -38,4 a22,22 0 0 1 -42,-16 Z"/>
+  </g>
+  <g id="fsm_state">
+  <rect class="s" x="706" y="379" width="70" height="110"/>
+  <rect class="s" x="700" y="385" width="70" height="110"/>
+  <path class="w" d="M700,465 L714,475 L700,485"/>
+  <circle class="s" cx="735" cy="500" r="5"/>
+  <text x="735" y="435" text-anchor="middle">state_q</text>
+  <text x="735" y="451" text-anchor="middle">[1:0]</text>
+  </g>
+  <text x="735" y="522" text-anchor="middle">rst_n</text>
+  <path class="w" d="M600,440 H700"/>
+  <path class="w" d="M776,440 H806"/>
+  <text x="810" y="444">state_q</text>
+  <g id="op_cinc">
+  <ellipse class="s" cx="270" cy="754" rx="26" ry="18"/>
+  <text x="270" y="759" text-anchor="middle">+1</text>
+  </g>
+  <path class="w" d="M204,754 H244"/>
+  <text x="200" y="758" text-anchor="end">cnt_q</text>
+  <g id="mux_cstep">
+  <path class="s" d="M340,700 L370,715 L370,755 L340,770 Z"/>
+  <text x="345" y="728">0</text>
+  <text x="345" y="758">1</text>
+  </g>
+  <path class="w" d="M296,754 H340"/>
+  <path class="w" d="M310,724 H340"/>
+  <text x="306" y="728" text-anchor="end">cnt_q</text>
+  <path class="w" d="M355,784.5 V762.5"/>
+  <text x="355" y="798.5" text-anchor="middle">st_div</text>
+  <g id="mux_cload">
+  <path class="s" d="M440,711 L470,726 L470,766 L440,781 Z"/>
+  <text x="445" y="739">0</text>
+  <text x="445" y="769">1</text>
+  </g>
+  <path class="w" d="M370,735 H440"/>
+  <path class="w" d="M425,765 H440"/>
+  <text x="420" y="769" text-anchor="end">5'd0</text>
+  <path class="w" d="M455,795.5 V773.5"/>
+  <text x="455" y="809.5" text-anchor="middle">load</text>
+  <g id="reg_cnt">
+  <rect class="s" x="536" y="685" width="70" height="110"/>
+  <rect class="s" x="530" y="691" width="70" height="110"/>
+  <path class="w" d="M530,771 L544,781 L530,791"/>
+  <circle class="s" cx="565" cy="806" r="5"/>
+  <text x="565" y="741" text-anchor="middle">cnt_q</text>
+  <text x="565" y="757" text-anchor="middle">[4:0]</text>
+  </g>
+  <text x="565" y="828" text-anchor="middle">rst_n</text>
+  <path class="w" d="M470,746 H530"/>
+  <path class="w" d="M606,746 H636"/>
+  <text x="640" y="750">cnt_q</text>
+  <g id="reg_dv">
+  <rect class="s" x="980" y="450" width="90" height="110"/>
+  <path class="w" d="M980,530 L994,540 L980,550"/>
+  <circle class="s" cx="1025" cy="565" r="5"/>
+  <text x="1025" y="509" text-anchor="middle">d_valid_q</text>
+  </g>
+  <text x="1025" y="587" text-anchor="middle">rst_n</text>
+  <path class="w" d="M930,505 H980"/>
+  <text x="926" y="509" text-anchor="end">d_valid_d</text>
+  <path class="w" d="M1070,505 H1800"/>
+  <text x="1800" y="501" text-anchor="end">d_valid</text>
+  <g id="reg_se">
+  <rect class="s" x="980" y="640" width="90" height="110"/>
+  <path class="w" d="M980,720 L994,730 L980,740"/>
+  <circle class="s" cx="1025" cy="755" r="5"/>
+  <text x="1025" y="699" text-anchor="middle">sat_err_q</text>
+  </g>
+  <text x="1025" y="777" text-anchor="middle">rst_n</text>
+  <path class="w" d="M930,695 H980"/>
+  <text x="926" y="699" text-anchor="end">sat_err_d</text>
+  <path class="w" d="M1070,695 H1800"/>
+  <text x="1800" y="691" text-anchor="end">sat_err</text>
+</svg>

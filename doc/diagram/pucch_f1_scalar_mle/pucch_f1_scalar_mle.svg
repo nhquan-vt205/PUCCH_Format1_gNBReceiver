@@ -1,0 +1,451 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2470" height="1391" viewBox="0 0 2470 1391"
+     font-family="Calibri, Arial, sans-serif" font-size="13">
+  <!-- module : pucch_f1_scalar_mle -->
+  <!-- stage  : 2 - diagram L1 (gate level + approved blk_metric, blk_rank; level raised from L2: 8 multipliers + 4-way ranking) -->
+  <!-- source : doc/spec/architecture/pucch_f1_scalar_mle_spec.md -->
+  <desc id="model"><![CDATA[
+// clk rising edge; rst_n synchronous active-low: every register resets to 0. Nets with the same label are connected.
+// Flattened table: entry k of ci_q/cq_q = [16k+15:16k] (signed F15), of bits_q = [2k+1:2k].
+cand_ready = ~tbl_valid_q;
+tbl_valid  = tbl_valid_q;
+cand_err   = cand_err_q;
+mle_valid  = mle_valid_q;
+[gate_cr]
+cand_ready = ~tbl_valid_q;
+[gate_tld]
+tbl_load = cand_valid & cand_ready;
+[bus_tin]
+tbl_in = {cand_mask, cand_i, cand_q, cand_bits};                 // 4 + 64 + 64 + 8 = 140 bits
+[mux_tbl]
+tbl_d = tbl_load ? tbl_in : {mask_q, ci_q, cq_q, bits_q};
+[reg_tbl]
+{mask_q, ci_q, cq_q, bits_q} <= tbl_d @(rst=140'd0);            // captured candidate table
+[mux_tvset]
+tv_set = tbl_load ? 1'b1 : tbl_valid_q;
+[mux_tvclr]
+tbl_valid_d = txn_clr ? 1'b0 : tv_set;
+[reg_tv]
+tbl_valid_q <= tbl_valid_d @(rst=1'b0);
+[op_mbne]
+mbit_ne = (cand_m_bit != m_bit);
+[gate_ce]
+cand_err_d = tbl_load & mbit_ne & ~txn_clr;
+[reg_ce]
+cand_err_q <= cand_err_d @(rst=1'b0);                           // 1-clock pulse after table capture
+[gate_dr]
+d_ready = tbl_valid_q & ~d_held_q & ~mle_valid_q;
+[gate_dld]
+d_load = d_valid & d_ready;
+[mux_d]
+d_d = d_load ? {d_i, d_q} : {di_q, dq_q};
+[reg_d]
+{di_q, dq_q} <= d_d @(rst=52'd0);                                // captured scalar d_rx
+[mux_dhset]
+dh_set = d_load ? 1'b1 : d_held_q;
+[mux_dhclr]
+d_held_d = txn_clr ? 1'b0 : dh_set;
+[reg_dh]
+d_held_q <= d_held_d @(rst=1'b0);
+[gate_det]
+det = d_held_q & ~mle_valid_q;                                   // detect: clock after scalar capture
+[mux_mvset]
+mv_set = det ? 1'b1 : mle_valid_q;
+[mux_mvclr]
+mle_valid_d = txn_clr ? 1'b0 : mv_set;
+[reg_mv]
+mle_valid_q <= mle_valid_d @(rst=1'b0);                         // held until txn_clr
+[blk_metric]
+// exact signed metrics, F30: products signed42 (26 x 16), sum signed43; no rounding
+for (k = 0; k < 4; k = k + 1)
+  metric[43*k +: 43] = $signed(di_q) * $signed(ci_q[16*k +: 16]) + $signed(dq_q) * $signed(cq_q[16*k +: 16]);
+[blk_rank]
+// rank by (metric descending, k ascending) over active entries mask_q[k]; signed compare only
+k_best = 0; found = 0;
+for (k = 0; k < 4; k = k + 1)
+  if (mask_q[k] && (!found || $signed(M[k]) > $signed(M[k_best]))) begin k_best = k; found = 1; end
+k_second = 0; found = 0;
+for (k = 0; k < 4; k = k + 1)
+  if (mask_q[k] && k != k_best && (!found || $signed(M[k]) > $signed(M[k_second]))) begin k_second = k; found = 1; end
+best_m   = M[k_best];  second_m = M[k_second];
+gap_m    = {best_m[42], best_m} - {second_m[42], second_m};      // 44-bit, >= 0
+bits_best = bits_q[2*k_best +: 2];
+res_new  = {k_best, bits_best, di_q, dq_q, best_m, second_m, gap_m};
+[mux_res]
+res_det = det ? res_new : res_q;
+[mux_resclr]
+res_d = txn_clr ? 186'd0 : res_det;
+[reg_res]
+res_q <= res_d @(rst=186'd0);
+// res_q = {mle_candidate_idx[1:0], mle_uci_bits[1:0], mle_d_rx_i[25:0], mle_d_rx_q[25:0],
+//          mle_metric_best[42:0], mle_metric_second[42:0], mle_metric_gap[43:0]}
+[bus_rsp]
+{mle_candidate_idx, mle_uci_bits, mle_d_rx_i, mle_d_rx_q, mle_metric_best, mle_metric_second, mle_metric_gap} = res_q;
+]]></desc>
+  <style>
+    .w{fill:none;stroke:#000;stroke-width:1.5}
+    .s{fill:#fff;stroke:#000;stroke-width:1.5}
+    .dot{fill:#000}
+    text{fill:#000}
+  </style>
+  <rect width="100%" height="100%" fill="#fff"/>
+  <g id="bus_tin">
+  <rect class="s" x="230" y="40" width="25" height="100"/>
+  </g>
+  <text x="242.5" y="34" text-anchor="middle">tbl_in[139:0]</text>
+  <text x="112" y="59" text-anchor="end">cand_mask[3:0]</text>
+  <path class="w" d="M120,55 H230"/>
+  <text x="226" y="52" text-anchor="end">[139:136]</text>
+  <text x="112" y="82" text-anchor="end">cand_i[63:0]</text>
+  <path class="w" d="M120,78 H230"/>
+  <text x="226" y="75" text-anchor="end">[135:72]</text>
+  <text x="112" y="105" text-anchor="end">cand_q[63:0]</text>
+  <path class="w" d="M120,101 H230"/>
+  <text x="226" y="98" text-anchor="end">[71:8]</text>
+  <text x="112" y="128" text-anchor="end">cand_bits[7:0]</text>
+  <path class="w" d="M120,124 H230"/>
+  <text x="226" y="121" text-anchor="end">[7:0]</text>
+  <g id="mux_tbl">
+  <path class="s" d="M320,56 L350,71 L350,111 L320,126 Z"/>
+  <text x="325" y="84">0</text>
+  <text x="325" y="114">1</text>
+  </g>
+  <path class="w" d="M255,90 H290 V110 H320"/>
+  <path class="w" d="M290,80 H320"/>
+  <text x="286" y="84" text-anchor="end">tbl_q</text>
+  <path class="w" d="M335,140.5 V118.5"/>
+  <text x="335" y="154.5" text-anchor="middle">tbl_load</text>
+  <g id="reg_tbl">
+  <rect class="s" x="406" y="30" width="70" height="110"/>
+  <rect class="s" x="400" y="36" width="70" height="110"/>
+  <path class="w" d="M400,116 L414,126 L400,136"/>
+  <circle class="s" cx="435" cy="151" r="5"/>
+  <text x="435" y="86" text-anchor="middle">tbl_q</text>
+  <text x="435" y="102" text-anchor="middle">[139:0]</text>
+  </g>
+  <text x="435" y="173" text-anchor="middle">rst_n</text>
+  <path class="w" d="M350,91 H400"/>
+  <g id="bus_tsp">
+  <rect class="s" x="540" y="60" width="25" height="100"/>
+  </g>
+  <text x="552.5" y="54" text-anchor="middle">tbl_q[139:0]</text>
+  <path class="w" d="M476,91 H540"/>
+  <path class="w" d="M565,75 H605"/>
+  <text x="609" y="79">mask_q[3:0]</text>
+  <path class="w" d="M565,98 H605"/>
+  <text x="609" y="102">ci_q[63:0]</text>
+  <path class="w" d="M565,121 H605"/>
+  <text x="609" y="125">cq_q[63:0]</text>
+  <path class="w" d="M565,144 H605"/>
+  <text x="609" y="148">bits_q[7:0]</text>
+  <text x="112" y="234" text-anchor="end">cand_valid</text>
+  <path class="w" d="M120,230 H175"/>
+  <text x="179" y="234">cand_valid</text>
+  <text x="112" y="264" text-anchor="end">m_bit[1:0]</text>
+  <path class="w" d="M120,260 H175"/>
+  <text x="179" y="264">m_bit</text>
+  <text x="112" y="294" text-anchor="end">cand_m_bit[1:0]</text>
+  <path class="w" d="M120,290 H175"/>
+  <text x="179" y="294">cand_m_bit</text>
+  <text x="112" y="324" text-anchor="end">txn_clr</text>
+  <path class="w" d="M120,320 H175"/>
+  <text x="179" y="324">txn_clr</text>
+  <g id="gate_cr">
+  <path class="s" d="M320,350 L350,365 L320,380 Z"/>
+  <circle class="s" cx="354" cy="365" r="4"/>
+  </g>
+  <path class="w" d="M280,365 H320"/>
+  <text x="276" y="369" text-anchor="end">tbl_valid_q</text>
+  <path class="w" d="M358,365 H960"/>
+  <text x="960" y="361" text-anchor="end">cand_ready</text>
+  <circle class="dot" cx="400" cy="365" r="4"/>
+  <g id="gate_tld">
+  <path class="s" d="M440,390 H470 A25,25 0 0 1 470,440 H440 Z"/>
+  </g>
+  <path class="w" d="M400,405 H440"/>
+  <text x="396" y="409" text-anchor="end">cand_valid</text>
+  <path class="w" d="M400,365 V425 H440"/>
+  <path class="w" d="M495,415 H520"/>
+  <text x="524" y="419">tbl_load</text>
+  <g id="mux_tvset">
+  <path class="s" d="M640,370 L670,385 L670,425 L640,440 Z"/>
+  <text x="645" y="398">0</text>
+  <text x="645" y="428">1</text>
+  </g>
+  <path class="w" d="M600,394 H640"/>
+  <text x="596" y="398" text-anchor="end">tbl_valid_q</text>
+  <path class="w" d="M625,424 H640"/>
+  <text x="620" y="428" text-anchor="end">1'b1</text>
+  <path class="w" d="M655,454.5 V432.5"/>
+  <text x="655" y="468.5" text-anchor="middle">tbl_load</text>
+  <g id="mux_tvclr">
+  <path class="s" d="M720,381 L750,396 L750,436 L720,451 Z"/>
+  <text x="725" y="409">0</text>
+  <text x="725" y="439">1</text>
+  </g>
+  <path class="w" d="M670,405 H720"/>
+  <path class="w" d="M705,435 H720"/>
+  <text x="700" y="439" text-anchor="end">1'b0</text>
+  <path class="w" d="M735,465.5 V443.5"/>
+  <text x="735" y="479.5" text-anchor="middle">txn_clr</text>
+  <g id="reg_tv">
+  <rect class="s" x="800" y="361" width="90" height="110"/>
+  <path class="w" d="M800,441 L814,451 L800,461"/>
+  <circle class="s" cx="845" cy="476" r="5"/>
+  <text x="845" y="420" text-anchor="middle">tbl_valid_q</text>
+  </g>
+  <text x="845" y="498" text-anchor="middle">rst_n</text>
+  <path class="w" d="M750,416 H800"/>
+  <path class="w" d="M890,416 H960"/>
+  <text x="960" y="412" text-anchor="end">tbl_valid</text>
+  <g id="op_mbne">
+  <ellipse class="s" cx="300" cy="555" rx="30" ry="18"/>
+  <text x="300" y="560" text-anchor="middle">!=</text>
+  </g>
+  <path class="w" d="M225.1,545 H275.1"/>
+  <text x="221.1" y="549" text-anchor="end">cand_m_bit</text>
+  <path class="w" d="M225.1,565 H275.1"/>
+  <text x="221.1" y="569" text-anchor="end">m_bit</text>
+  <g id="gate_ce">
+  <path class="s" d="M440,530 H470 A35,35 0 0 1 470,600 H440 Z"/>
+  <circle class="s" cx="436" cy="585" r="4"/>
+  </g>
+  <path class="w" d="M400,545 H440"/>
+  <text x="396" y="549" text-anchor="end">tbl_load</text>
+  <path class="w" d="M330,555 H390 V565 H440"/>
+  <path class="w" d="M400,585 H432"/>
+  <text x="396" y="589" text-anchor="end">txn_clr</text>
+  <g id="reg_ce">
+  <rect class="s" x="560" y="510" width="90" height="110"/>
+  <path class="w" d="M560,590 L574,600 L560,610"/>
+  <circle class="s" cx="605" cy="625" r="5"/>
+  <text x="605" y="569" text-anchor="middle">cand_err_q</text>
+  </g>
+  <text x="605" y="647" text-anchor="middle">rst_n</text>
+  <path class="w" d="M505,565 H560"/>
+  <path class="w" d="M650,565 H960"/>
+  <text x="960" y="561" text-anchor="end">cand_err</text>
+  <text x="112" y="684" text-anchor="end">d_valid</text>
+  <path class="w" d="M120,680 H175"/>
+  <text x="179" y="684">d_valid</text>
+  <g id="gate_dr">
+  <path class="s" d="M300,710 H330 A35,35 0 0 1 330,780 H300 Z"/>
+  <circle class="s" cx="296" cy="745" r="4"/>
+  <circle class="s" cx="296" cy="765" r="4"/>
+  </g>
+  <path class="w" d="M260,725 H300"/>
+  <text x="256" y="729" text-anchor="end">tbl_valid_q</text>
+  <path class="w" d="M252,745 H292"/>
+  <text x="248" y="749" text-anchor="end">d_held_q</text>
+  <path class="w" d="M252,765 H292"/>
+  <text x="248" y="769" text-anchor="end">mle_valid_q</text>
+  <path class="w" d="M365,745 H960"/>
+  <text x="960" y="741" text-anchor="end">d_ready</text>
+  <circle class="dot" cx="400" cy="745" r="4"/>
+  <g id="gate_dld">
+  <path class="s" d="M440,770 H470 A25,25 0 0 1 470,820 H440 Z"/>
+  </g>
+  <path class="w" d="M400,785 H440"/>
+  <text x="396" y="789" text-anchor="end">d_valid</text>
+  <path class="w" d="M400,745 V805 H440"/>
+  <path class="w" d="M495,795 H520"/>
+  <text x="524" y="799">d_load</text>
+  <text x="112" y="914" text-anchor="end">d_i[25:0]</text>
+  <path class="w" d="M120,910 H230"/>
+  <text x="112" y="944" text-anchor="end">d_q[25:0]</text>
+  <path class="w" d="M120,940 H230"/>
+  <g id="bus_din">
+  <rect class="s" x="230" y="895" width="25" height="60"/>
+  </g>
+  <text x="226" y="907" text-anchor="end">[51:26]</text>
+  <text x="226" y="937" text-anchor="end">[25:0]</text>
+  <g id="mux_d">
+  <path class="s" d="M400,871 L430,886 L430,926 L400,941 Z"/>
+  <text x="405" y="899">0</text>
+  <text x="405" y="929">1</text>
+  </g>
+  <path class="w" d="M255,925 H400"/>
+  <path class="w" d="M360,895 H400"/>
+  <text x="356" y="899" text-anchor="end">{di_q,dq_q}</text>
+  <path class="w" d="M415,955.5 V933.5"/>
+  <text x="415" y="969.5" text-anchor="middle">d_load</text>
+  <g id="reg_d">
+  <rect class="s" x="486" y="845" width="90" height="110"/>
+  <rect class="s" x="480" y="851" width="90" height="110"/>
+  <path class="w" d="M480,931 L494,941 L480,951"/>
+  <circle class="s" cx="525" cy="966" r="5"/>
+  <text x="525" y="901" text-anchor="middle">di_q, dq_q</text>
+  <text x="525" y="917" text-anchor="middle">[51:0]</text>
+  </g>
+  <text x="525" y="988" text-anchor="middle">rst_n</text>
+  <path class="w" d="M430,906 H480"/>
+  <path class="w" d="M576,906 H616"/>
+  <text x="620" y="910">di_q[25:0], dq_q[25:0]</text>
+  <g id="mux_dhset">
+  <path class="s" d="M320,1080 L350,1095 L350,1135 L320,1150 Z"/>
+  <text x="325" y="1108">0</text>
+  <text x="325" y="1138">1</text>
+  </g>
+  <path class="w" d="M280,1104 H320"/>
+  <text x="276" y="1108" text-anchor="end">d_held_q</text>
+  <path class="w" d="M305,1134 H320"/>
+  <text x="300" y="1138" text-anchor="end">1'b1</text>
+  <path class="w" d="M335,1164.5 V1142.5"/>
+  <text x="335" y="1178.5" text-anchor="middle">d_load</text>
+  <g id="mux_dhclr">
+  <path class="s" d="M400,1091 L430,1106 L430,1146 L400,1161 Z"/>
+  <text x="405" y="1119">0</text>
+  <text x="405" y="1149">1</text>
+  </g>
+  <path class="w" d="M350,1115 H400"/>
+  <path class="w" d="M385,1145 H400"/>
+  <text x="380" y="1149" text-anchor="end">1'b0</text>
+  <path class="w" d="M415,1175.5 V1153.5"/>
+  <text x="415" y="1189.5" text-anchor="middle">txn_clr</text>
+  <g id="reg_dh">
+  <rect class="s" x="480" y="1071" width="80" height="110"/>
+  <path class="w" d="M480,1151 L494,1161 L480,1171"/>
+  <circle class="s" cx="520" cy="1186" r="5"/>
+  <text x="520" y="1130" text-anchor="middle">d_held_q</text>
+  </g>
+  <text x="520" y="1208" text-anchor="middle">rst_n</text>
+  <path class="w" d="M430,1126 H480"/>
+  <path class="w" d="M560,1126 H590"/>
+  <text x="594" y="1130">d_held_q</text>
+  <g id="gate_det">
+  <path class="s" d="M160,1260 H190 A25,25 0 0 1 190,1310 H160 Z"/>
+  <circle class="s" cx="156" cy="1295" r="4"/>
+  </g>
+  <path class="w" d="M120,1275 H160"/>
+  <text x="116" y="1279" text-anchor="end">d_held_q</text>
+  <path class="w" d="M120,1295 H152"/>
+  <text x="116" y="1299" text-anchor="end">mle_valid_q</text>
+  <path class="w" d="M215,1285 H240"/>
+  <text x="244" y="1289">det</text>
+  <g id="mux_mvset">
+  <path class="s" d="M320,1230 L350,1245 L350,1285 L320,1300 Z"/>
+  <text x="325" y="1258">0</text>
+  <text x="325" y="1288">1</text>
+  </g>
+  <path class="w" d="M280,1254 H320"/>
+  <text x="276" y="1258" text-anchor="end">mle_valid_q</text>
+  <path class="w" d="M305,1284 H320"/>
+  <text x="300" y="1288" text-anchor="end">1'b1</text>
+  <path class="w" d="M335,1314.5 V1292.5"/>
+  <text x="335" y="1328.5" text-anchor="middle">det</text>
+  <g id="mux_mvclr">
+  <path class="s" d="M400,1241 L430,1256 L430,1296 L400,1311 Z"/>
+  <text x="405" y="1269">0</text>
+  <text x="405" y="1299">1</text>
+  </g>
+  <path class="w" d="M350,1265 H400"/>
+  <path class="w" d="M385,1295 H400"/>
+  <text x="380" y="1299" text-anchor="end">1'b0</text>
+  <path class="w" d="M415,1325.5 V1303.5"/>
+  <text x="415" y="1339.5" text-anchor="middle">txn_clr</text>
+  <g id="reg_mv">
+  <rect class="s" x="480" y="1221" width="90" height="110"/>
+  <path class="w" d="M480,1301 L494,1311 L480,1321"/>
+  <circle class="s" cx="525" cy="1336" r="5"/>
+  <text x="525" y="1280" text-anchor="middle">mle_valid_q</text>
+  </g>
+  <text x="525" y="1358" text-anchor="middle">rst_n</text>
+  <path class="w" d="M430,1276 H480"/>
+  <path class="w" d="M570,1276 H960"/>
+  <text x="960" y="1272" text-anchor="end">mle_valid</text>
+  <g id="blk_metric">
+  <rect class="s" x="1200" y="60" width="150" height="200"/>
+  <text x="1275" y="164" text-anchor="middle">metric</text>
+  </g>
+  <text x="1196" y="86" text-anchor="end">di_q[25:0]</text>
+  <text x="1196" y="126" text-anchor="end">dq_q[25:0]</text>
+  <text x="1196" y="166" text-anchor="end">ci_q[63:0]</text>
+  <text x="1196" y="206" text-anchor="end">cq_q[63:0]</text>
+  <text x="1354" y="156">metric[171:0]</text>
+  <path class="w" d="M1080,90 H1120"/>
+  <text x="1076" y="94" text-anchor="end">di_q</text>
+  <path class="w" d="M1120,90 H1200"/>
+  <path class="w" d="M1080,130 H1120"/>
+  <text x="1076" y="134" text-anchor="end">dq_q</text>
+  <path class="w" d="M1120,130 H1200"/>
+  <path class="w" d="M1080,170 H1120"/>
+  <text x="1076" y="174" text-anchor="end">ci_q</text>
+  <path class="w" d="M1120,170 H1200"/>
+  <path class="w" d="M1080,210 H1120"/>
+  <text x="1076" y="214" text-anchor="end">cq_q</text>
+  <path class="w" d="M1120,210 H1200"/>
+  <g id="blk_rank">
+  <rect class="s" x="1600" y="60" width="150" height="260"/>
+  <text x="1675" y="194" text-anchor="middle">rank</text>
+  </g>
+  <text x="1596" y="156" text-anchor="end">metric[171:0]</text>
+  <text x="1596" y="216" text-anchor="end">mask_q[3:0]</text>
+  <text x="1596" y="256" text-anchor="end">bits_q[7:0]</text>
+  <text x="1596" y="296" text-anchor="end">di_q, dq_q</text>
+  <text x="1754" y="186">res_new[185:0]</text>
+  <path class="w" d="M1350,160 H1600"/>
+  <path class="w" d="M1460,220 H1500"/>
+  <text x="1456" y="224" text-anchor="end">mask_q</text>
+  <path class="w" d="M1500,220 H1600"/>
+  <path class="w" d="M1460,260 H1500"/>
+  <text x="1456" y="264" text-anchor="end">bits_q</text>
+  <path class="w" d="M1500,260 H1600"/>
+  <path class="w" d="M1460,300 H1500"/>
+  <text x="1456" y="304" text-anchor="end">di_q, dq_q</text>
+  <path class="w" d="M1500,300 H1600"/>
+  <g id="mux_res">
+  <path class="s" d="M1840,136 L1870,151 L1870,191 L1840,206 Z"/>
+  <text x="1845" y="164">0</text>
+  <text x="1845" y="194">1</text>
+  </g>
+  <path class="w" d="M1750,190 H1840"/>
+  <path class="w" d="M1810,160 H1840"/>
+  <text x="1806" y="164" text-anchor="end">res_q</text>
+  <path class="w" d="M1855,220.5 V198.5"/>
+  <text x="1855" y="234.5" text-anchor="middle">det</text>
+  <g id="mux_resclr">
+  <path class="s" d="M1920,147 L1950,162 L1950,202 L1920,217 Z"/>
+  <text x="1925" y="175">0</text>
+  <text x="1925" y="205">1</text>
+  </g>
+  <path class="w" d="M1870,171 H1920"/>
+  <path class="w" d="M1905,201 H1920"/>
+  <text x="1900" y="205" text-anchor="end">186'd0</text>
+  <path class="w" d="M1935,231.5 V209.5"/>
+  <text x="1935" y="245.5" text-anchor="middle">txn_clr</text>
+  <g id="reg_res">
+  <rect class="s" x="2016" y="121" width="70" height="110"/>
+  <rect class="s" x="2010" y="127" width="70" height="110"/>
+  <path class="w" d="M2010,207 L2024,217 L2010,227"/>
+  <circle class="s" cx="2045" cy="242" r="5"/>
+  <text x="2045" y="177" text-anchor="middle">res_q</text>
+  <text x="2045" y="193" text-anchor="middle">[185:0]</text>
+  </g>
+  <text x="2045" y="264" text-anchor="middle">rst_n</text>
+  <path class="w" d="M1950,182 H2010"/>
+  <g id="bus_rsp">
+  <rect class="s" x="2160" y="60" width="25" height="200"/>
+  </g>
+  <text x="2172.5" y="54" text-anchor="middle">res_q[185:0]</text>
+  <path class="w" d="M2086,182 H2160"/>
+  <path class="w" d="M2185,75 H2430"/>
+  <text x="2189" y="72">[185:184]</text>
+  <text x="2430" y="71" text-anchor="end">mle_candidate_idx[1:0]</text>
+  <path class="w" d="M2185,102 H2430"/>
+  <text x="2189" y="99">[183:182]</text>
+  <text x="2430" y="98" text-anchor="end">mle_uci_bits[1:0]</text>
+  <path class="w" d="M2185,129 H2430"/>
+  <text x="2189" y="126">[181:156]</text>
+  <text x="2430" y="125" text-anchor="end">mle_d_rx_i[25:0]</text>
+  <path class="w" d="M2185,156 H2430"/>
+  <text x="2189" y="153">[155:130]</text>
+  <text x="2430" y="152" text-anchor="end">mle_d_rx_q[25:0]</text>
+  <path class="w" d="M2185,183 H2430"/>
+  <text x="2189" y="180">[129:87]</text>
+  <text x="2430" y="179" text-anchor="end">mle_metric_best[42:0]</text>
+  <path class="w" d="M2185,210 H2430"/>
+  <text x="2189" y="207">[86:44]</text>
+  <text x="2430" y="206" text-anchor="end">mle_metric_second[42:0]</text>
+  <path class="w" d="M2185,237 H2430"/>
+  <text x="2189" y="234">[43:0]</text>
+  <text x="2430" y="233" text-anchor="end">mle_metric_gap[43:0]</text>
+</svg>

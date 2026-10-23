@@ -1,0 +1,423 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2240" height="1020" viewBox="0 0 2240 1020"
+     font-family="Calibri, Arial, sans-serif" font-size="13">
+  <!-- module : pucch_f1_lowpapr_phase_gen -->
+  <!-- stage  : 2 - diagram L1 (u_ children + approved blk_cap, blk_uq, blk_cursor, cloud_next, cloud_luterr; ROMs as mem_) -->
+  <!-- source : doc/spec/architecture/pucch_f1_lowpapr_phase_gen_spec.md + pucch_f1_gold_gen_spec.md (child ports) -->
+  <desc id="model"><![CDATA[
+// clk rising edge; rst_n synchronous active-low: every register (incl. s_cache) resets to 0, state IDLE.
+// Nets with the same label are connected. txn_clr has priority over every other action.
+localparam ST_IDLE = 2'd0, ST_PREP = 2'd1, ST_RUN = 2'd2, ST_DONE = 2'd3;
+gen_ready = gen_ready_q;
+[op_div30]
+gh_init = n_id / 10'd30;                                   // 0..34
+[u_gold_gh]
+pucch_f1_gold_gen u_gold_gh (.start(txn_start), .clr(txn_clr), .c_init({25'd0, gh_init}),
+                             .c_valid(gh_valid), .c_bit(gh_bit), .c_idx(gh_idx));
+[u_gold_cs]
+pucch_f1_gold_gen u_gold_cs (.start(txn_start), .clr(txn_clr), .c_init({21'd0, n_id}),
+                             .c_valid(cs_valid), .c_bit(cs_bit), .c_idx(cs_idx));
+[blk_cap]
+prep    = (state_q == ST_PREP);
+gh_base = {3'd0, slot_idx, 4'd0};                         // 16 * slot
+gh_off  = gh_idx - gh_base;
+gh_hit  = prep & gh_valid & (gh_idx >= gh_base) & (gh_off < 12'd16);
+cs_base = slot_idx * 7'd112;                              // 12 bits
+cs_off  = cs_idx - cs_base;
+cs_hit  = prep & cs_valid & (cs_idx >= cs_base) & (cs_off < 12'd112);
+fgh_q[gh_off[3:0]] <= gh_bit @(en=gh_hit);  fgh_q <= 16'd0 on txn_clr | txn_start  @(rst=16'd0)
+ncs_byte_q[cs_off[2:0]] <= cs_bit @(en=cs_hit);  ncs_byte_q <= 8'd0 on txn_clr | txn_start  @(rst=8'd0)
+n_cs    = {cs_bit, ncs_byte_q[6:0]};                      // completed byte (bit b at position b)
+sc_we   = cs_hit & (cs_off[2:0] == 3'd7);
+sc_wa   = cs_off[6:3];                                    // absolute symbol l
+sc_wd   = ({4'd0, m0} + {1'b0, n_cs}) % 9'd12;            // s_l = (m0 + n_cs) mod 12
+prep_done = cs_hit & (cs_off == 12'd111);                 // GH bits always finish earlier
+[mem_scache]
+reg [3:0] s_cache_q [0:13];
+s_cache_q[sc_wa] <= sc_wd @(en=sc_we);  all entries <= 4'd0 on txn_clr | txn_start  @(rst=4'd0)
+s_l = (l_abs5 <= 5'd13) ? s_cache_q[l_abs5[3:0]] : 4'd0;
+[blk_uq]
+f_ss  = n_id % 10'd30;
+fgh0  = (gh_mode == 2'd1) ? fgh_q[7:0]  % 8'd30 : 5'd0;
+fgh1  = (gh_mode == 2'd1) ? fgh_q[15:8] % 8'd30 : 5'd0;
+u0_q <= (f_ss + fgh0) % 30 @(en=prep_done);  u1_q <= (f_ss + fgh1) % 30 @(en=prep_done);  cleared on txn_clr | txn_start  @(rst=5'd0)
+[cloud_next]
+fire = phase_valid & phase_ready;
+state_d = txn_clr ? ST_IDLE : txn_start ? ST_PREP :
+          (state_q == ST_PREP & prep_done) ? ST_RUN :
+          (state_q == ST_RUN & fire & phase_last) ? ST_DONE : state_q;
+gen_ready_d = (txn_clr | txn_start) ? 1'b0 : prep_done ? 1'b1 : gen_ready_q;
+[fsm_state]
+state_q <= state_d @(rst=ST_IDLE);
+[reg_gr]
+gen_ready_q <= gen_ready_d @(rst=1'b0);                    // held until txn_clr
+[op_run]
+phase_valid = (state_q == ST_RUN);
+[gate_fire]
+fire = phase_valid & phase_ready;
+[blk_cursor]
+// registers q_q[6:0], g_q[2:0], n_q[3:0], t_q[3:0] @(rst=0); cleared on txn_clr | txn_start
+on fire: q_q <= q_q + 7'd1;
+         if (n_q == 4'd11) begin n_q <= 4'd0; t_q <= 4'd0; g_q <= g_q + 3'd1; end
+         else begin n_q <= n_q + 4'd1; t_sum = {1'b0, t_q} + {1'b0, s_l}; t_q <= (t_sum >= 5'd12) ? t_sum - 5'd12 : t_sum; end
+phase_hop      = hopping & (g_q >= n_sf0);
+phase_m        = phase_hop ? g_q - n_sf0 : g_q;
+l_abs5         = {1'b0, start_symbol} + {1'b0, g_q, 1'b1};  // start + 2g + 1
+phase_l_abs    = l_abs5[3:0];
+phase_sample_q = q_q;  phase_n = n_q;
+phase_first    = (q_q == 7'd0);
+phase_last     = (q_q == n_re - 7'd1);
+[mux_u]
+u_sel = phase_hop ? u1_q : u0_q;
+[mem_base]
+// constant ROM 360 x 16, addr = 12*u + n, contents = (8192 * phi_u(n)) mod 65536 (source 07 section 2)
+base_phase = ((u_sel <= 5'd29) & (n_q <= 4'd11)) ? BASE[12*u_sel + n_q] : 16'd0;
+[mem_cs]
+// constant ROM 12 x 16, CS[t] = floor(65536 * t / 12) (source 07 section 4)
+cs_phase = (t_q <= 4'd11) ? CS[t_q] : 16'd0;
+[op_radd]
+r_phase = base_phase + cs_phase;                          // modulo 65536
+[cloud_luterr]
+lut_err = phase_valid & ((u_sel > 5'd29) | (n_q > 4'd11) | (t_q > 4'd11) | (l_abs5 > 5'd13));
+]]></desc>
+  <style>
+    .w{fill:none;stroke:#000;stroke-width:1.5}
+    .s{fill:#fff;stroke:#000;stroke-width:1.5}
+    .dot{fill:#000}
+    text{fill:#000}
+  </style>
+  <rect width="100%" height="100%" fill="#fff"/>
+  <text x="142" y="44" text-anchor="end">n_id[9:0]</text>
+  <path class="w" d="M150,40 H210"/>
+  <text x="214" y="44">n_id</text>
+  <text x="142" y="69" text-anchor="end">gh_mode[1:0]</text>
+  <path class="w" d="M150,65 H210"/>
+  <text x="214" y="69">gh_mode</text>
+  <text x="142" y="94" text-anchor="end">slot_idx[4:0]</text>
+  <path class="w" d="M150,90 H210"/>
+  <text x="214" y="94">slot_idx</text>
+  <text x="142" y="119" text-anchor="end">start_symbol[3:0]</text>
+  <path class="w" d="M150,115 H210"/>
+  <text x="214" y="119">start_symbol</text>
+  <text x="142" y="144" text-anchor="end">hopping</text>
+  <path class="w" d="M150,140 H210"/>
+  <text x="214" y="144">hopping</text>
+  <text x="142" y="169" text-anchor="end">m0[3:0]</text>
+  <path class="w" d="M150,165 H210"/>
+  <text x="214" y="169">m0</text>
+  <text x="142" y="194" text-anchor="end">n_sf0[2:0]</text>
+  <path class="w" d="M150,190 H210"/>
+  <text x="214" y="194">n_sf0</text>
+  <text x="142" y="219" text-anchor="end">n_re[6:0]</text>
+  <path class="w" d="M150,215 H210"/>
+  <text x="214" y="219">n_re</text>
+  <text x="142" y="264" text-anchor="end">txn_start</text>
+  <path class="w" d="M150,260 H210"/>
+  <text x="214" y="264">txn_start</text>
+  <text x="142" y="289" text-anchor="end">txn_clr</text>
+  <path class="w" d="M150,285 H210"/>
+  <text x="214" y="289">txn_clr</text>
+  <text x="142" y="314" text-anchor="end">phase_ready</text>
+  <path class="w" d="M150,310 H210"/>
+  <text x="214" y="314">phase_ready</text>
+  <g id="op_div30">
+  <ellipse class="s" cx="370" cy="380" rx="30" ry="18"/>
+  <text x="370" y="385" text-anchor="middle">/ 30</text>
+  </g>
+  <path class="w" d="M300,380 H340"/>
+  <text x="296" y="384" text-anchor="end">n_id</text>
+  <g id="u_gold_gh">
+  <rect class="s" x="580" y="340" width="150" height="120"/>
+  <text x="655" y="395" text-anchor="middle">u_gold_gh</text>
+  <text x="655" y="413" text-anchor="middle">pucch_f1_gold_gen</text>
+  </g>
+  <text x="576" y="366" text-anchor="end">start</text>
+  <text x="576" y="396" text-anchor="end">clr</text>
+  <text x="576" y="426" text-anchor="end">c_init</text>
+  <text x="734" y="366">c_valid</text>
+  <text x="734" y="396">c_bit</text>
+  <text x="734" y="426">c_idx</text>
+  <path class="w" d="M400,380 H460 V430 H580"/>
+  <text x="464" y="426">gh_init</text>
+  <path class="w" d="M520,370 H580"/>
+  <text x="516" y="374" text-anchor="end">txn_start</text>
+  <path class="w" d="M520,400 H580"/>
+  <text x="516" y="404" text-anchor="end">txn_clr</text>
+  <path class="w" d="M730,370 H790"/>
+  <text x="794" y="374">gh_valid</text>
+  <path class="w" d="M730,400 H790"/>
+  <text x="794" y="404">gh_bit</text>
+  <path class="w" d="M730,430 H790"/>
+  <text x="794" y="434">gh_idx[11:0]</text>
+  <g id="u_gold_cs">
+  <rect class="s" x="580" y="500" width="150" height="120"/>
+  <text x="655" y="555" text-anchor="middle">u_gold_cs</text>
+  <text x="655" y="573" text-anchor="middle">pucch_f1_gold_gen</text>
+  </g>
+  <text x="576" y="526" text-anchor="end">start</text>
+  <text x="576" y="556" text-anchor="end">clr</text>
+  <text x="576" y="586" text-anchor="end">c_init</text>
+  <text x="734" y="526">c_valid</text>
+  <text x="734" y="556">c_bit</text>
+  <text x="734" y="586">c_idx</text>
+  <path class="w" d="M520,530 H580"/>
+  <text x="516" y="534" text-anchor="end">txn_start</text>
+  <path class="w" d="M520,560 H580"/>
+  <text x="516" y="564" text-anchor="end">txn_clr</text>
+  <path class="w" d="M520,590 H580"/>
+  <text x="516" y="594" text-anchor="end">{21'd0, n_id}</text>
+  <path class="w" d="M730,530 H790"/>
+  <text x="794" y="534">cs_valid</text>
+  <path class="w" d="M730,560 H790"/>
+  <text x="794" y="564">cs_bit</text>
+  <path class="w" d="M730,590 H790"/>
+  <text x="794" y="594">cs_idx[11:0]</text>
+  <path class="w" d="M920,70 H1020"/>
+  <text x="916" y="74" text-anchor="end">gh_valid</text>
+  <path class="w" d="M920,100 H1020"/>
+  <text x="916" y="104" text-anchor="end">gh_bit</text>
+  <path class="w" d="M920,130 H1020"/>
+  <text x="916" y="134" text-anchor="end">gh_idx</text>
+  <path class="w" d="M920,160 H1020"/>
+  <text x="916" y="164" text-anchor="end">cs_valid</text>
+  <path class="w" d="M920,190 H1020"/>
+  <text x="916" y="194" text-anchor="end">cs_bit</text>
+  <path class="w" d="M920,220 H1020"/>
+  <text x="916" y="224" text-anchor="end">cs_idx</text>
+  <path class="w" d="M920,250 H1020"/>
+  <text x="916" y="254" text-anchor="end">slot_idx</text>
+  <path class="w" d="M920,280 H1020"/>
+  <text x="916" y="284" text-anchor="end">m0</text>
+  <path class="w" d="M920,310 H1020"/>
+  <text x="916" y="314" text-anchor="end">state_q</text>
+  <g id="blk_cap">
+  <rect class="s" x="1020" y="40" width="150" height="300"/>
+  <text x="1095" y="194" text-anchor="middle">gold_capture</text>
+  </g>
+  <text x="1016" y="66" text-anchor="end">gh_valid</text>
+  <text x="1016" y="96" text-anchor="end">gh_bit</text>
+  <text x="1016" y="126" text-anchor="end">gh_idx</text>
+  <text x="1016" y="156" text-anchor="end">cs_valid</text>
+  <text x="1016" y="186" text-anchor="end">cs_bit</text>
+  <text x="1016" y="216" text-anchor="end">cs_idx</text>
+  <text x="1016" y="246" text-anchor="end">slot_idx</text>
+  <text x="1016" y="276" text-anchor="end">m0</text>
+  <text x="1016" y="306" text-anchor="end">state_q</text>
+  <text x="1174" y="76">fgh_q[15:0]</text>
+  <text x="1174" y="146">sc_we</text>
+  <text x="1174" y="176">sc_wa[3:0]</text>
+  <text x="1174" y="206">sc_wd[3:0]</text>
+  <text x="1174" y="286">prep_done</text>
+  <path class="w" d="M1170,80 H1260"/>
+  <text x="1264" y="84">fgh_q</text>
+  <path class="w" d="M1170,290 H1260"/>
+  <text x="1264" y="294">prep_done</text>
+  <g id="mem_scache">
+  <rect class="s" x="1320" y="120" width="160" height="120"/>
+  <path class="w" d="M1320,210 L1334,220 L1320,230"/>
+  <circle class="s" cx="1400" cy="245" r="5"/>
+  <text x="1400" y="175" text-anchor="middle">s_cache_q</text>
+  <text x="1400" y="193" text-anchor="middle">14 x 4</text>
+  </g>
+  <text x="1400" y="267" text-anchor="middle">rst_n</text>
+  <path class="w" d="M1170,150 H1320"/>
+  <text x="1316" y="146" text-anchor="end">WE</text>
+  <path class="w" d="M1170,180 H1320"/>
+  <text x="1316" y="176" text-anchor="end">WA[3:0]</text>
+  <path class="w" d="M1170,210 H1320"/>
+  <text x="1316" y="206" text-anchor="end">WD[3:0]</text>
+  <path class="w" d="M1400,120 V90"/>
+  <text x="1404" y="116">RA = l_abs5</text>
+  <path class="w" d="M1480,180 H1520"/>
+  <text x="1484" y="176">RD</text>
+  <text x="1524" y="184">s_l</text>
+  <text x="1400" y="85" text-anchor="middle">l_abs5</text>
+  <g id="blk_uq">
+  <rect class="s" x="1020" y="420" width="150" height="140"/>
+  <text x="1095" y="494" text-anchor="middle">u_calc</text>
+  </g>
+  <text x="1016" y="446" text-anchor="end">n_id</text>
+  <text x="1016" y="476" text-anchor="end">gh_mode</text>
+  <text x="1016" y="506" text-anchor="end">fgh_q</text>
+  <text x="1016" y="536" text-anchor="end">prep_done</text>
+  <text x="1174" y="466">u0_q[4:0]</text>
+  <text x="1174" y="526">u1_q[4:0]</text>
+  <path class="w" d="M920,450 H1020"/>
+  <text x="916" y="454" text-anchor="end">n_id</text>
+  <path class="w" d="M920,480 H1020"/>
+  <text x="916" y="484" text-anchor="end">gh_mode</text>
+  <path class="w" d="M920,510 H1020"/>
+  <text x="916" y="514" text-anchor="end">fgh_q</text>
+  <path class="w" d="M920,540 H1020"/>
+  <text x="916" y="544" text-anchor="end">prep_done</text>
+  <g id="mux_u">
+  <path class="s" d="M1280,446 L1310,461 L1310,501 L1280,516 Z"/>
+  <text x="1285" y="474">0</text>
+  <text x="1285" y="504">1</text>
+  </g>
+  <path class="w" d="M1170,470 H1280"/>
+  <path class="w" d="M1170,530 H1220 V500 H1280"/>
+  <path class="w" d="M1295,533.5 V508.5"/>
+  <text x="1295" y="547.5" text-anchor="middle">phase_hop</text>
+  <path class="w" d="M1310,481 H1350"/>
+  <text x="1354" y="485">u_sel</text>
+  <path class="w" d="M150,720 H220"/>
+  <text x="146" y="724" text-anchor="end">txn_start</text>
+  <path class="w" d="M220,720 H240"/>
+  <path class="w" d="M150,745 H220"/>
+  <text x="146" y="749" text-anchor="end">txn_clr</text>
+  <path class="w" d="M220,745 H240"/>
+  <path class="w" d="M150,770 H220"/>
+  <text x="146" y="774" text-anchor="end">prep_done</text>
+  <path class="w" d="M220,770 H240"/>
+  <path class="w" d="M150,795 H220"/>
+  <text x="146" y="799" text-anchor="end">phase_valid</text>
+  <path class="w" d="M220,795 H240"/>
+  <path class="w" d="M150,820 H220"/>
+  <text x="146" y="824" text-anchor="end">phase_ready</text>
+  <path class="w" d="M220,820 H240"/>
+  <path class="w" d="M150,845 H220"/>
+  <text x="146" y="849" text-anchor="end">phase_last</text>
+  <path class="w" d="M220,845 H240"/>
+  <path class="w" d="M150,870 H220"/>
+  <text x="146" y="874" text-anchor="end">state_q</text>
+  <path class="w" d="M220,870 H240"/>
+  <path class="w" d="M440,740 H520"/>
+  <path class="w" d="M440,800 H520"/>
+  <g id="cloud_next" transform="translate(230,690) scale(1.8,2.2)">
+  <path class="s" d="M20,60 a18,18 0 0 1 -2,-34 a22,22 0 0 1 38,-14 a22,22 0 0 1 40,2 a20,20 0 0 1 22,30 a18,18 0 0 1 -18,28 a22,22 0 0 1 -38,4 a22,22 0 0 1 -42,-16 Z"/>
+  </g>
+  <g id="fsm_state">
+  <rect class="s" x="546" y="679" width="70" height="110"/>
+  <rect class="s" x="540" y="685" width="70" height="110"/>
+  <path class="w" d="M540,765 L554,775 L540,785"/>
+  <circle class="s" cx="575" cy="800" r="5"/>
+  <text x="575" y="735" text-anchor="middle">state_q</text>
+  <text x="575" y="751" text-anchor="middle">[1:0]</text>
+  </g>
+  <text x="575" y="822" text-anchor="middle">rst_n</text>
+  <path class="w" d="M520,740 H540"/>
+  <text x="444" y="736">state_d</text>
+  <path class="w" d="M616,740 H646"/>
+  <text x="650" y="744">state_q</text>
+  <g id="reg_gr">
+  <rect class="s" x="540" y="850" width="90" height="110"/>
+  <path class="w" d="M540,930 L554,940 L540,950"/>
+  <circle class="s" cx="585" cy="965" r="5"/>
+  <text x="585" y="909" text-anchor="middle">gen_ready_q</text>
+  </g>
+  <text x="585" y="987" text-anchor="middle">rst_n</text>
+  <path class="w" d="M520,800 V905 H540"/>
+  <text x="444" y="796">gen_ready_d</text>
+  <path class="w" d="M630,905 H2200"/>
+  <text x="2200" y="901" text-anchor="end">gen_ready</text>
+  <g id="op_run">
+  <ellipse class="s" cx="880" cy="740" rx="42" ry="18"/>
+  <text x="880" y="745" text-anchor="middle">== RUN</text>
+  </g>
+  <path class="w" d="M798,740 H838"/>
+  <text x="794" y="744" text-anchor="end">state_q</text>
+  <path class="w" d="M922,740 H2200"/>
+  <text x="2200" y="736" text-anchor="end">phase_valid</text>
+  <circle class="dot" cx="960" cy="740" r="4"/>
+  <g id="gate_fire">
+  <path class="s" d="M1000,760 H1030 A25,25 0 0 1 1030,810 H1000 Z"/>
+  </g>
+  <path class="w" d="M960,740 V775 H1000"/>
+  <path class="w" d="M960,795 H1000"/>
+  <text x="956" y="799" text-anchor="end">phase_ready</text>
+  <path class="w" d="M1055,785 H1085"/>
+  <text x="1089" y="789">fire</text>
+  <path class="w" d="M1620,70 H1720"/>
+  <text x="1616" y="74" text-anchor="end">fire</text>
+  <path class="w" d="M1620,100 H1720"/>
+  <text x="1616" y="104" text-anchor="end">s_l</text>
+  <path class="w" d="M1620,130 H1720"/>
+  <text x="1616" y="134" text-anchor="end">txn_start</text>
+  <path class="w" d="M1620,160 H1720"/>
+  <text x="1616" y="164" text-anchor="end">txn_clr</text>
+  <path class="w" d="M1620,190 H1720"/>
+  <text x="1616" y="194" text-anchor="end">hopping</text>
+  <path class="w" d="M1620,220 H1720"/>
+  <text x="1616" y="224" text-anchor="end">n_sf0</text>
+  <path class="w" d="M1620,250 H1720"/>
+  <text x="1616" y="254" text-anchor="end">start_symbol</text>
+  <path class="w" d="M1620,280 H1720"/>
+  <text x="1616" y="284" text-anchor="end">n_re</text>
+  <g id="blk_cursor">
+  <rect class="s" x="1720" y="40" width="150" height="270"/>
+  <text x="1795" y="179" text-anchor="middle">re_cursor</text>
+  </g>
+  <text x="1716" y="66" text-anchor="end">fire</text>
+  <text x="1716" y="96" text-anchor="end">s_l</text>
+  <text x="1716" y="126" text-anchor="end">txn_start</text>
+  <text x="1716" y="156" text-anchor="end">txn_clr</text>
+  <text x="1716" y="186" text-anchor="end">hopping</text>
+  <text x="1716" y="216" text-anchor="end">n_sf0</text>
+  <text x="1716" y="246" text-anchor="end">start_symbol</text>
+  <text x="1716" y="276" text-anchor="end">n_re</text>
+  <text x="1874" y="66">phase_sample_q</text>
+  <text x="1874" y="96">phase_hop</text>
+  <text x="1874" y="126">phase_m</text>
+  <text x="1874" y="156">phase_n</text>
+  <text x="1874" y="186">phase_l_abs</text>
+  <text x="1874" y="216">phase_first</text>
+  <text x="1874" y="246">phase_last</text>
+  <text x="1874" y="276">n_q, t_q, l_abs5</text>
+  <path class="w" d="M1870,70 H2200"/>
+  <text x="2200" y="66" text-anchor="end">phase_sample_q[6:0]</text>
+  <path class="w" d="M1870,100 H2200"/>
+  <text x="2200" y="96" text-anchor="end">phase_hop</text>
+  <path class="w" d="M1870,130 H2200"/>
+  <text x="2200" y="126" text-anchor="end">phase_m[2:0]</text>
+  <path class="w" d="M1870,160 H2200"/>
+  <text x="2200" y="156" text-anchor="end">phase_n[3:0]</text>
+  <path class="w" d="M1870,190 H2200"/>
+  <text x="2200" y="186" text-anchor="end">phase_l_abs[3:0]</text>
+  <path class="w" d="M1870,220 H2200"/>
+  <text x="2200" y="216" text-anchor="end">phase_first</text>
+  <path class="w" d="M1870,250 H2200"/>
+  <text x="2200" y="246" text-anchor="end">phase_last</text>
+  <path class="w" d="M1870,280 H2000"/>
+  <text x="2004" y="284">n_q, t_q, l_abs5</text>
+  <g id="mem_base">
+  <rect class="s" x="1720" y="420" width="160" height="90"/>
+  <text x="1800" y="460" text-anchor="middle">base_rom</text>
+  <text x="1800" y="478" text-anchor="middle">360 x 16</text>
+  </g>
+  <path class="w" d="M1640,450 H1720"/>
+  <text x="1636" y="454" text-anchor="end">12*u_sel + n_q</text>
+  <text x="1716" y="446" text-anchor="end">RA[8:0]</text>
+  <g id="mem_cs">
+  <rect class="s" x="1720" y="550" width="160" height="90"/>
+  <text x="1800" y="590" text-anchor="middle">cs_rom</text>
+  <text x="1800" y="608" text-anchor="middle">12 x 16</text>
+  </g>
+  <path class="w" d="M1660,580 H1720"/>
+  <text x="1656" y="584" text-anchor="end">t_q</text>
+  <text x="1716" y="576" text-anchor="end">RA[3:0]</text>
+  <g id="op_radd">
+  <ellipse class="s" cx="2000" cy="530" rx="26" ry="18"/>
+  <text x="2000" y="535" text-anchor="middle">+</text>
+  </g>
+  <path class="w" d="M1880,465 H1940 V520 H1978.4"/>
+  <text x="1884" y="461">RD[15:0]</text>
+  <path class="w" d="M1880,595 H1940 V540 H1978.4"/>
+  <text x="1884" y="591">RD[15:0]</text>
+  <path class="w" d="M2026,530 H2200"/>
+  <text x="2200" y="526" text-anchor="end">r_phase[15:0]</text>
+  <path class="w" d="M1670,805 H1730"/>
+  <text x="1666" y="809" text-anchor="end">phase_valid</text>
+  <path class="w" d="M1670,825 H1730"/>
+  <text x="1666" y="829" text-anchor="end">u_sel</text>
+  <path class="w" d="M1670,845 H1730"/>
+  <text x="1666" y="849" text-anchor="end">n_q</text>
+  <path class="w" d="M1670,865 H1730"/>
+  <text x="1666" y="869" text-anchor="end">t_q</text>
+  <path class="w" d="M1670,885 H1730"/>
+  <text x="1666" y="889" text-anchor="end">l_abs5</text>
+  <path class="w" d="M1900,840 H2200"/>
+  <text x="2200" y="836" text-anchor="end">lut_err</text>
+  <g id="cloud_luterr" transform="translate(1720,785) scale(1.6,1.3)">
+  <path class="s" d="M20,60 a18,18 0 0 1 -2,-34 a22,22 0 0 1 38,-14 a22,22 0 0 1 40,2 a20,20 0 0 1 22,30 a18,18 0 0 1 -18,28 a22,22 0 0 1 -38,4 a22,22 0 0 1 -42,-16 Z"/>
+  </g>
+</svg>
