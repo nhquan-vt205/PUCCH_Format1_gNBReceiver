@@ -50,10 +50,11 @@ Diagram là mô hình kiến trúc, không phải sơ đồ cổng; RTL giữ đ
 │   │   └── scripts/check_preconditions.py
 │   └── rtl-s5-tb/                # S5 (tùy chọn): testbench self-checking
 │       ├── tb_coding_rules/      # (tùy chọn) rule testbench của bạn
-│       ├── references/default_tb_rules.md
+│       ├── references/default_tb_rules.md, sim_env/ (mẫu Makefile, *.f, *.csh, schematic.tcl)
 │       └── scripts/check_preconditions.py, check_sim_log.py
-├── doc/{spec/source, diagram, vplan}/     # thư mục con khác của doc/spec/ do S1 tạo khi cần
-└── rtl/  sim/  tb/
+├── doc/{spec/source, diagram, vplan, database/{input,output}}/   # thư mục con khác của doc/spec/ do S1 tạo khi cần
+├── rtl/  tb/  testcases/                # chỉ mã HDL
+└── sim/                                 # môi trường mô phỏng dùng chung (QuestaSim + Vivado schematic)
 ```
 
 `.claude` là thư mục ẩn – bật "hiện file ẩn" nếu không thấy.
@@ -65,7 +66,7 @@ Diagram là mô hình kiến trúc, không phải sơ đồ cổng; RTL giữ đ
 3. (Tùy chọn) đặt coding rule / template của bạn vào `coding_rules/`, `vplan_template/`, `tb_coding_rules/`. Để trống thì skill dùng rule mặc định.
 4. (Tùy chọn) để S2 parse Mermaid bằng đúng thư viện của mermaid.live: `npm install --prefix .claude/skills/rtl-s2-diagram/scripts`.
 
-Công cụ: Python 3 (bắt buộc), Node.js, `iverilog` và/hoặc `verilator` (miễn phí, đủ cho cả flow).
+Công cụ: Python 3 (bắt buộc), Node.js, `iverilog` và/hoặc `verilator` (lint S3). Mô phỏng S5: QuestaSim 2021 qua `sim/Makefile` (không có thì `iverilog`), Vivado cho `make schematic`, `tcsh` cho `sim/run.csh`/`report.csh`.
 
 ## 4. Sử dụng
 
@@ -76,7 +77,7 @@ Công cụ: Python 3 (bắt buộc), Node.js, `iverilog` và/hoặc `verilator` 
 | `/rtl-s2-diagram <m> [--level Lx] [--format mermaid\|html\|both]` | Diagram kiến trúc của module, mặc định một file `<m>.mmd` (mở trên https://mermaid.live). `--format html\|both` chỉ cho **một** module leaf L2: thêm/chỉ `<m>.html` – RTL schematic chi tiết (DFF, MUX, comparator, cổng, phép toán, hằng, feedback, clock/reset), SVG tự chứa, mở thẳng bằng Chrome/Edge. `.mmd` vẫn là diagram chính thức cho S3. |
 | `/rtl-s3-rtl <m>` | RTL Verilog-2005 (`rtl/<m>.v`) theo spec + diagram, compile/lint sạch. |
 | `/rtl-s4-vplan <m>` | (tùy chọn) Vplan direct test tối thiểu. |
-| `/rtl-s5-tb <m>` | (tùy chọn) Testbench self-checking Verilog-2005 (`tb/<m>/tb_<m>.v`: 9 phần cố định, golden model + checker + bộ đếm PASS/FAIL, clock 20 ns, stimulus tại `posedge` + `#1`) + script chạy, mô phỏng nếu có simulator. |
+| `/rtl-s5-tb <m>` | (tùy chọn) Testbench self-checking Verilog-2005 (`tb/tb_<m>.v`: 9 phần cố định, golden model + checker + bộ đếm PASS/FAIL, clock 20 ns, stimulus tại `posedge` + `#1`) + mỗi item vplan một `testcases/<ID>.v`, cập nhật `sim/rtl.f`, `sim/pat.list`, mô phỏng bằng `make -C sim all TESTNAME=<ID>` nếu có simulator. |
 
 Thiết kế nhiều cấp: S2→S3 cho các leaf trước, rồi block, cuối cùng top. Có thể nêu nhiều module trong một lệnh; không có lệnh "all" – chủ ý để bạn duyệt từng module.
 
@@ -101,7 +102,7 @@ Chỉ khi cần
 
 Tùy chọn (S4–S5)
   doc/vplan/<m>_vplan.*
-  tb/<m>/tb_<m>.v, sim/<m>/<m>.f, run.sh
+  tb/tb_<m>.v, testcases/<ID>.v, sim/rtl.f, sim/pat.list (+ sim/Makefile, *.f, *.csh, schematic.tcl nếu chưa có)
 ```
 
 ## 6. Gate của từng stage

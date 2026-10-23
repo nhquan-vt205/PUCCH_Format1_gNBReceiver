@@ -1,8 +1,8 @@
 # ============================================================================
-# schematic.tcl - Vivado RTL elaboration + schematic of pucch_f1_rx_core
+# schematic.tcl - Vivado RTL elaboration + schematic of the module under test
 # Called by "make schematic" from sim/:
 #   vivado -mode gui -source schematic.tcl -tclargs <top> <part> <sch|.> <rtl.f>
-# <sch> ".": top level (5 blocks); else an instance path, e.g. u_ctrl.
+# <sch> ".": top level of <top>; else an instance path under it, e.g. u_ctrl.
 # ============================================================================
 lassign $argv top part sch flist
 

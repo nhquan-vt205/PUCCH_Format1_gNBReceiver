@@ -1,6 +1,7 @@
 # ============================================================================
-# Allow-list: only HDL sources, simulation scripts, docs, AI skills and the
-# top-level Markdown / README files are committed. Everything else is ignored.
+# Allow-list: only HDL sources, simulation scripts, docs, AI skills, the AI
+# instruction files (CLAUDE.md, AGENTS.md) and README are committed.
+# Everything else is ignored.
 # ============================================================================
 
 # 1. Project root: ignore everything ...
@@ -8,7 +9,8 @@
 
 # ... except these
 !/.gitignore
-!/*.md
+!/CLAUDE.md
+!/AGENTS.md
 !/README*
 !/rtl/
 !/tb/

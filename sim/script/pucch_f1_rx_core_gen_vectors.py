@@ -6,7 +6,7 @@ File format: doc/report/pucch_f1_rx_core_tb_data_format.md
   doc/database/output/pucch_f1_rx_core_output.txt : everything used to judge the DUT (SRC/TX/MATLAB/EXP lines)
 
 Modes (run from the project root):
-  python3 sim/script/gen_vectors.py
+  python3 sim/script/pucch_f1_rx_core_gen_vectors.py
       Build both files from the MATLAB database in doc/database/:
       1. read rx_grid_SNR_20dB.csv and decoded_bits_SNR_20dB.csv;
       2. locate the PUCCH PRB and recover the PUCCH config blindly, cross-checked
@@ -15,7 +15,7 @@ Modes (run from the project root):
          channel estimate on the DM-RS symbols, time interpolation, ZF
          equalization, quantization to signed Q1.15 (Y_hat);
       4. run the bit-exact reference model of source 03 to fill the EXP lines.
-  python3 sim/script/gen_vectors.py --fill-exp IN OUT
+  python3 sim/script/pucch_f1_rx_core_gen_vectors.py --fill-exp IN OUT
       Check the syntax of an externally generated pair (e.g. MATLAB export) and
       write the bit-exact EXP line of every case into OUT (in place). Cases with
       a sample order/marker error are left without EXP (write it by hand).
