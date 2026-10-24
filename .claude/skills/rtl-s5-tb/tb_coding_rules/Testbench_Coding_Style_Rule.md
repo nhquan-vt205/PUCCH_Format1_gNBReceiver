@@ -4,7 +4,7 @@
 
 This document is the testbench coding-style rule converted from the `tb_check_item` sheet in the provided `RTL_Coding_Style_Rule(1).xlsx`.
 
-The scope is a **direct, self-checking simulation testbench** written in **Verilog-2005 (IEEE 1364-2005)**: the shared testbench `tb/tb_<module>.v` plus one test-case file `testcases/<ID>.v` per VPLAN item (included as `sim/run_test.v`). SystemVerilog-only constructs (`logic`, `bit`, `string`, `always_ff`, `always_comb`, `always_latch`, `typedef`, `enum`, `struct`, `interface`/`modport`, `package`, `class`, `foreach`, queues, dynamic arrays, `mailbox`, SV casts, `$fatal`, SVA) shall **NOT** be used. The rules below do not introduce UVM, coverage, constrained-random or assertion-based verification.
+The scope is a **direct, self-checking simulation testbench** written in **Verilog-2005 (IEEE 1364-2005)**: the shared testbench `tb/tb_<module>.v` plus one test-case file `tc/<ID>.v` per VPLAN item (included as `sim/run_test.v`). SystemVerilog-only constructs (`logic`, `bit`, `string`, `always_ff`, `always_comb`, `always_latch`, `typedef`, `enum`, `struct`, `interface`/`modport`, `package`, `class`, `foreach`, queues, dynamic arrays, `mailbox`, SV casts, `$fatal`, SVA) shall **NOT** be used. The rules below do not introduce UVM, coverage, constrained-random or assertion-based verification.
 
 This style applies when the project's optional S4/S5 direct-test flow is used. It does not make S4/S5 mandatory for every module.
 
@@ -116,7 +116,7 @@ Do not invent large numbers of corner cases that are unrelated to the specificat
 
 - Expected values come from the golden reference model, derived from the specification/VPLAN. Never derive the expected value from a DUT output.
 - Keep `integer pass_count;` and `integer fail_count;`, initialized to 0. Each checker comparison increments exactly one of them, so PASS + FAIL = number of comparisons.
-- Each VPLAN item is one test-case file `testcases/<ID>.v` named after its VPLAN ID (e.g. `testcases/TC_ACC_UNIT_001.v`): one `initial` block calling `init_test`, `reset_dut`, the item sequence and `end_test`. The testbench file itself is shared by all items of the module. A test case is selected with `make -C sim all TESTNAME=<ID>` (no `+TEST`); VPLAN IDs are used for file names, `sim/pat.list` and reporting.
+- Each VPLAN item is one test-case file `tc/<ID>.v` named after its VPLAN ID (e.g. `tc/TC_ACC_UNIT_001.v`): one `initial` block calling `init_test`, `reset_dut`, the item sequence and `end_test`. The testbench file itself is shared by all items of the module. A test case is selected with `make -C sim all TESTNAME=<ID>` (no `+TEST`); VPLAN IDs are used for file names, `sim/pat.list` and reporting.
 - Log format (read by `check_sim_log.py`):
 
 ```text
@@ -155,7 +155,7 @@ Avoid assigning the same variable from multiple `always`/`initial` statements un
 
 ## 10. Direct-Test Testbench Checklist
 
-- [ ] Testbench `tb/tb_<module>.v` and test cases `testcases/<ID>.v` are pure Verilog-2005 (no SystemVerilog constructs); `tb/` and `testcases/` hold HDL only.
+- [ ] Testbench `tb/tb_<module>.v` and test cases `tc/<ID>.v` are pure Verilog-2005 (no SystemVerilog constructs); `tb/` and `tc/` hold HDL only.
 - [ ] The nine sections are present in the mandatory order with visible headers.
 - [ ] Comments use `//` only.
 - [ ] Comments are written in English.
@@ -171,7 +171,7 @@ Avoid assigning the same variable from multiple `always`/`initial` statements un
 - [ ] Clock does not rise at simulation time 0.
 - [ ] Expected values come from an independent golden reference model.
 - [ ] The checker updates `pass_count`/`fail_count` and prints the standard log line; `[SUMMARY] PASS=<n> FAIL=<n>` and `Test_result: PASSED|FAILED` are printed at the end.
-- [ ] Each VPLAN item prints `-- <item name> test --` (human-readable VPLAN item name) and is implemented as one test-case file `testcases/<ID>.v`.
+- [ ] Each VPLAN item prints `-- <item name> test --` (human-readable VPLAN item name) and is implemented as one test-case file `tc/<ID>.v`.
 - [ ] Case names describe the important input characteristics (no generic `CASE_001`).
 - [ ] Test cases cover all major specified behaviors and important boundary/exception cases.
 - [ ] Driven testbench signals have clear procedural ownership.

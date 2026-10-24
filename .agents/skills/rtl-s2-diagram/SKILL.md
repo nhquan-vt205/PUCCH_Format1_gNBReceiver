@@ -22,7 +22,7 @@ Ngôn ngữ đầu ra: `.svg` (nhãn, comment, model) chỉ dùng tiếng Anh AS
 ## Bước 0 – Gate
 
 ```bash
-python3 .agents/skills$rtl-s2-diagram/scripts/check_preconditions.py --stage 2 --module <m> [<m2> ...] [--level Lx]
+python3 .agents/skills/rtl-s2-diagram/scripts/check_preconditions.py --stage 2 --module <m> [<m2> ...] [--level Lx]
 ```
 
 Gọi một lần với **mọi module của lệnh**, kèm đúng `--level` người dùng đưa; mỗi module có một khối kết quả riêng. Khối nào `KHÔNG ĐỦ ĐIỀU KIỆN` → bỏ qua module đó, báo các dòng `[THIẾU]` và cách khắc phục. Mã thoát 2 (gọi sai) → dừng cả lệnh, báo nguyên văn lỗi. Dòng `[INFO]` cho biết chế độ (đơn/phân cấp), file spec và bảng port cần đọc, level đề xuất, file định dạng cũ cần xóa. Lệnh có `--from/--to` mà nêu nhiều module → dừng, đề nghị gọi riêng từng module.
@@ -77,7 +77,7 @@ Mặc định **không tạo** `<m>_notes.md`. Tạo khi diagram + model + spec 
 ## Bước 7 – Lint
 
 ```bash
-python3 .agents/skills$rtl-s2-diagram/scripts/lint_svg.py doc/diagram/<m>/*.svg --interface <file bảng port gate in ra>
+python3 .agents/skills/rtl-s2-diagram/scripts/lint_svg.py doc/diagram/<m>/*.svg --interface <file bảng port gate in ra>
 ```
 
 Sửa đến khi `KẾT QUẢ: OK`. Lint kiểm: XML, header/level, đen trắng, phần tử cấm, tiếng Anh, tiền tố id, model khớp nhóm, luật level, tên port không nằm trong khối, phủ port. Lint **không** kiểm bố cục – đó là việc tự rà ở Bước 4. Cảnh báo "nhiều primitive" → đề xuất người dùng gom thêm hoặc dùng góc nhìn scope, không tự gom.

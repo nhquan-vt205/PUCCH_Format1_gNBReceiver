@@ -14,13 +14,13 @@
 !/README*
 !/rtl/
 !/tb/
-!/testcases/
+!/tc/
 !/sim/
 !/doc/
 !/.claude/
 !/.agents/
 
-# 2. rtl/, tb/, testcases/: HDL source code only
+# 2. rtl/, tb/, tc/:       HDL source code only
 /rtl/*
 !/rtl/*.v
 !/rtl/*.vh
@@ -31,11 +31,11 @@
 !/tb/*.vh
 !/tb/*.sv
 !/tb/*.svh
-/testcases/*
-!/testcases/*.v
-!/testcases/*.vh
-!/testcases/*.sv
-!/testcases/*.svh
+/tc/*
+!/tc/*.v
+!/tc/*.vh
+!/tc/*.sv
+!/tc/*.svh
 
 # 3. sim/: hand-written scripts only; every Makefile / simulator output
 #    (work, log, coverage, covhtmlreport, *.wlf, *.ucdb, run_test.v, ...) is ignored

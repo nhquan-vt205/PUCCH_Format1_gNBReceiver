@@ -6,7 +6,7 @@
 //   +OUT=<file> output file : SRC / TX / MATLAB / EXP lines per CASE (reference)
 //               default ../doc/database/output/pucch_f1_rx_core_output.txt (relative to sim/)
 // Both files are streamed one CASE at a time, so the case count is unbounded.
-// Test cases: testcases/<TESTNAME>.v, copied to sim/run_test.v by "make build"
+// Test cases: tc/<TESTNAME>.v, copied to sim/run_test.v by "make build"
 // and included at the end of this module (section 9).
 //   TC_PUCCH_F1_RX_CORE_001 - MATLAB decoded bits (continuous stream, no stall)
 //   TC_PUCCH_F1_RX_CORE_002 - bit-exact golden record (input gaps + result stall)
@@ -507,7 +507,7 @@ module tb_pucch_f1_rx_core;
   // ============================================================
   // 9. Main Program Body
   // ============================================================
-  // Test sequence of the selected test case (testcases/<TESTNAME>.v)
+  // Test sequence of the selected test case (tc/<TESTNAME>.v)
 `include "run_test.v"
 
   initial begin

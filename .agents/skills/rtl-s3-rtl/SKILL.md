@@ -20,14 +20,14 @@ Mục tiêu: RTL **Verilog-2005, đúng chức năng trong spec, đơn giản, d
 ## Bước 0 – Gate
 
 ```bash
-python3 .agents/skills$rtl-s3-rtl/scripts/check_preconditions.py --stage 3 --module <m>
+python3 .agents/skills/rtl-s3-rtl/scripts/check_preconditions.py --stage 3 --module <m>
 ```
 
 Cần: spec đã PASS, bảng port của module, diagram `doc/diagram/<m>/<m>.svg`. `<m>_notes.md` không bắt buộc – có thì đọc. Diagram đầu vào chỉ là `<m>.svg`; góc nhìn scope `<m>_<part>.svg` không đọc; file định dạng cũ (`.mmd`, `.html`) không còn được nhận – chạy lại `$rtl-s2-diagram <m>`. Mã thoát ≠ 0 → bỏ qua module đó, báo các dòng `[THIẾU]` và lệnh cần chạy trước. Dòng `[INFO]` cho biết file cần đọc, level và module con chưa có RTL.
 
 ## Bước 1 – Coding rule
 
-Đọc mọi file trong `.agents/skills$rtl-s3-rtl/coding_rules/` (trừ README.md) nếu có – rule người dùng là luật cao nhất. Chỗ rule không nói tới (hoặc thư mục trống) dùng `references/default_rtl_rules.md`.
+Đọc mọi file trong `.agents/skills/rtl-s3-rtl/coding_rules/` (trừ README.md) nếu có – rule người dùng là luật cao nhất. Chỗ rule không nói tới (hoặc thư mục trống) dùng `references/default_rtl_rules.md`.
 
 **Ngôn ngữ RTL mặc định: Verilog-2005 (IEEE 1364-2005), đuôi `.v`** – đây là luật, không phải gợi ý. Không dùng construct SystemVerilog (`logic`, `always_ff`, `always_comb`, `typedef`/`enum`/`struct`, `interface`, `package`, `unique case`, `inside`, `'0`, SVA…) – danh sách đủ trong `default_rtl_rules.md`. Chỉ đổi ngôn ngữ khi coding rule người dùng quy định rõ; ghi ngôn ngữ đã dùng trong báo cáo.
 
@@ -69,7 +69,7 @@ Spec/diagram sai hoặc thiếu đến mức không viết được đúng chứ
 
 1. **Port list:**
    ```bash
-   python3 .agents/skills$rtl-s3-rtl/scripts/check_ports.py rtl/<m>.v <file bảng port gate in ra>
+   python3 .agents/skills/rtl-s3-rtl/scripts/check_ports.py rtl/<m>.v <file bảng port gate in ra>
    ```
 2. **Compile/lint** bằng công cụ có sẵn – mục tiêu 0 error, không còn warning nghiêm trọng; warning còn lại phải giải thích được:
    ```bash

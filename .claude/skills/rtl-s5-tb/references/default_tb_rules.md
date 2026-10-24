@@ -6,7 +6,7 @@ Mục tiêu: testbench direct, tự kiểm, mô phỏng tất định, đọc đ
 
 - **Verilog-2005 (IEEE 1364-2005)**. Hai loại file, cả hai chỉ là mã HDL:
   - `tb/tb_<m>.v`, module top `tb_<m>`: hạ tầng dùng chung cho mọi test của `<m>`.
-  - `testcases/<ID>.v`, một file mỗi item vplan (`<ID>` = ID vplan dạng `TC_<M>_<NNN>`): chuỗi test của item, được `make build` chép thành `sim/run_test.v` và include vào phần 9 của TB.
+  - `tc/<ID>.v`, một file mỗi item vplan (`<ID>` = ID vplan dạng `TC_<M>_<NNN>`): chuỗi test của item, được `make build` chép thành `sim/run_test.v` và include vào phần 9 của TB.
 - Phải là cú pháp Verilog-2005 thật – không phải đổi đuôi một file SystemVerilog.
 - Dùng: `reg`, `wire`, `integer`, `parameter`, `localparam`, `always`, `initial`, `task`, `function`, `if`, `case`, `for`, `while`, `repeat`, `$display`, `$write`, `$sformat`, `$value$plusargs`, `$test$plusargs`, `$fopen`/`$fgets`/`$sscanf` (khi đọc file dữ liệu), `$finish`, `` `include ``.
 - **Cấm** (SystemVerilog): `logic`, `bit`, `byte`, `int`, `string`, `always_ff`, `always_comb`, `always_latch`, `typedef`, `enum`, `struct`, `union`, `interface`/`modport`, `package`/`import`, `class`, `virtual`, `foreach`, queue, mảng động, `mailbox`, `assert`/`property` (SVA), cast `type'(...)`, literal `'0`/`'1`, `$fatal`, khai báo biến trong `for` (`for (int i …)`).
@@ -96,14 +96,14 @@ Mỗi testcase chạy thành một log riêng `sim/log/<ID>.log` (transcript Que
 Test_result: FAILED
 ```
 
-- `-- <item name> test --`: in ở đầu chuỗi test trong `testcases/<ID>.v`. `<item name>` là **tên tiếng Anh ngắn, đọc được, lấy từ vplan** (không thay bằng ID, không dịch): vplan mặc định – phần tên sau ID ở heading `### TC_<M>_001 – <tên>`; template bảng có cột `ID` – cột cụ thể nhất (thường `Sub item 2`), chỉ thêm cột phía trước (`Sub item 1`, rồi `Item`, nối bằng ` / `) khi cần để phân biệt với item khác, bỏ ô trống/`—` (vd. `-- DATA Register 0 / Reset value check test --`, `-- Single Write test --`). Lấy đúng danh sách header bằng `python3 .claude/skills/rtl-s5-tb/scripts/check_sim_log.py --items doc/vplan/<m>_vplan.<ext>`; checker dùng tên này để map về ID vplan. Chỉ ghi ID thay tên khi item trong vplan không có tên hoặc tên trùng với item khác. Mọi case in sau header thuộc item đó.
+- `-- <item name> test --`: in ở đầu chuỗi test trong `tc/<ID>.v`. `<item name>` là **tên tiếng Anh ngắn, đọc được, lấy từ vplan** (không thay bằng ID, không dịch): vplan mặc định – phần tên sau ID ở heading `### TC_<M>_001 – <tên>`; template bảng có cột `ID` – cột cụ thể nhất (thường `Sub item 2`), chỉ thêm cột phía trước (`Sub item 1`, rồi `Item`, nối bằng ` / `) khi cần để phân biệt với item khác, bỏ ô trống/`—` (vd. `-- DATA Register 0 / Reset value check test --`, `-- Single Write test --`). Lấy đúng danh sách header bằng `python3 .claude/skills/rtl-s5-tb/scripts/check_sim_log.py --items doc/vplan/<m>_vplan.<ext>`; checker dùng tên này để map về ID vplan. Chỉ ghi ID thay tên khi item trong vplan không có tên hoặc tên trùng với item khác. Mọi case in sau header thuộc item đó.
 - `[<time>]`: thời gian mô phỏng hiện tại, `$time` theo ns, in `%0d`.
 - `<case>`: tên ngắn, không khoảng trắng, mô tả **đặc điểm input quan trọng** của case – `addr_0_wdata_A5A5A5A5`, `valid_1_ready_0`, `clr_1_en_1_pulse_1`; nhiều input quan trọng thì ghép đủ vào tên. Không dùng tên vô nghĩa kiểu `CASE_001`, `TEST_01`. Ghép động bằng `$sformat`.
 - `PASS`/`FAIL`: quyết định của checker. `expected`: giá trị golden model. `actual`: giá trị DUT. In bằng `%h` (bus ra đủ chữ số hex theo width, 1 bit ra `0`/`1`), không thêm tiền tố.
 - Dấu phân cách giữ nguyên `| expected: ... | actual: ...`.
 - `[SUMMARY] PASS=<pass_count> FAIL=<fail_count>` in một lần cuối mô phỏng (trong `end_test`).
 - `Test_result: PASSED` khi FAIL = 0 và PASS > 0, ngược lại `Test_result: FAILED`; in ngay sau `[SUMMARY]`. `sim/report.csh` lấy từ thứ ba của dòng này làm kết quả.
-- ID vplan vẫn dùng cho máy: tên file `testcases/<ID>.v`, `make TESTNAME=<ID>`, `sim/pat.list`, báo cáo.
+- ID vplan vẫn dùng cho máy: tên file `tc/<ID>.v`, `make TESTNAME=<ID>`, `sim/pat.list`, báo cáo.
 
 ```verilog
 $display("[%0d] %0s PASS | expected: %h | actual: %h", $time, name, exp, act);
@@ -111,10 +111,10 @@ $display("[%0d] %0s PASS | expected: %h | actual: %h", $time, name, exp, act);
 
 ## 7. Chọn test, timeout, waveform, dữ liệu file
 
-- Chọn test bằng file: `make -C sim all TESTNAME=<ID>` chép `testcases/<ID>.v` thành `sim/run_test.v`, biên dịch, chạy. Không dùng `+TEST`. Chạy cả danh sách: `cd sim && ./run.csh` (đọc `pat.list`), tổng hợp: `./report.csh`.
+- Chọn test bằng file: `make -C sim all TESTNAME=<ID>` chép `tc/<ID>.v` thành `sim/run_test.v`, biên dịch, chạy. Không dùng `+TEST`. Chạy cả danh sách: `cd sim && ./run.csh` (đọc `pat.list`), tổng hợp: `./report.csh`.
 - Timeout toàn cục (vd. 100× số chu kỳ ước lượng) trong `initial` riêng ở phần 9: in `[TIMEOUT] ...`, `fail_count = fail_count + 1;`, gọi `end_test`.
 - Waveform: `make run` ghi mọi tín hiệu (`log -r /*`) vào `sim/vsim.wlf`; `make wave` mở trong QuestaSim. TB không cần `$dumpfile`/`$dumpvars`.
-- Dữ liệu từ file (khi vplan/spec dùng vector ngoài): input `doc/database/input/<m>_<tên>.txt`, tham chiếu `doc/database/output/<m>_<tên>.txt`. `init_test` đọc `+IN=`/`+OUT=`; mặc định là đường dẫn tương đối từ `sim/` (`"../doc/database/input/<m>_<tên>.txt"`), biến chuỗi `reg [8*256-1:0]`. Đổi cặp file: `make all TESTNAME=<ID> DATA_IN=<file> DATA_OUT=<file>`. Script sinh dữ liệu: `sim/script/<m>_gen_vectors.py` (`make gen_data`). Không đặt dữ liệu hay script trong `tb/`, `testcases/`.
+- Dữ liệu từ file (khi vplan/spec dùng vector ngoài): input `doc/database/input/<m>_<tên>.txt`, tham chiếu `doc/database/output/<m>_<tên>.txt`. `init_test` đọc `+IN=`/`+OUT=`; mặc định là đường dẫn tương đối từ `sim/` (`"../doc/database/input/<m>_<tên>.txt"`), biến chuỗi `reg [8*256-1:0]`. Đổi cặp file: `make all TESTNAME=<ID> DATA_IN=<file> DATA_OUT=<file>`. Script sinh dữ liệu: `sim/script/<m>_gen_vectors.py` (`make gen_data`). Không đặt dữ liệu hay script trong `tb/`, `tc/`.
 
 ## 8. Khung mẫu (DUT `pulse_cnt` 3 bit: `clr_i` → 0, `en_i & pulse_i` → +1)
 
@@ -123,7 +123,7 @@ $display("[%0d] %0s PASS | expected: %h | actual: %h", $time, name, exp, act);
 ```verilog
 // tb_pulse_cnt - self-checking direct testbench for pulse_cnt
 // Vplan: doc/vplan/pulse_cnt_vplan.md
-// Test cases: testcases/TC_PULSE_CNT_<NNN>.v, copied to sim/run_test.v by
+// Test cases: tc/TC_PULSE_CNT_<NNN>.v, copied to sim/run_test.v by
 // "make build" and included in section 9.
 `timescale 1ns/1ps
 
@@ -280,7 +280,7 @@ module tb_pulse_cnt;
   // ============================================================
   // 9. Main Program Body
   // ============================================================
-  // Test sequence of the selected test case (testcases/<ID>.v)
+  // Test sequence of the selected test case (tc/<ID>.v)
 `include "run_test.v"
 
   initial begin
@@ -293,7 +293,7 @@ module tb_pulse_cnt;
 endmodule
 ```
 
-`testcases/TC_PULSE_CNT_002.v` (nội dung nằm bên trong module TB, nên thụt 2 khoảng trắng; không khai báo biến):
+`tc/TC_PULSE_CNT_002.v` (nội dung nằm bên trong module TB, nên thụt 2 khoảng trắng; không khai báo biến):
 
 ```verilog
 // ============================================================================
@@ -325,13 +325,13 @@ Test_result: PASSED
 
 ## 9. Môi trường `sim/` (dùng chung cho mọi module)
 
-Mẫu ở `references/sim_env/`; chỉ chép file nào chưa có trong `sim/`, không ghi đè bản đã có.
+Mẫu ở `references/sim_env/` (`init_project` chép sẵn vào `sim/` khi tạo project); S5 chỉ chép file nào chưa có trong `sim/`, không ghi đè bản đã có.
 
 | File | Nội dung |
 | --- | --- |
 | `Makefile` | QuestaSim 2021: `build`, `run`, `all`/`all_wave`/`all_cov` (luôn `clean_sim` trước), `wave`, `build_cov`, `run_cov` (+ report riêng của test ở `coverage/<ID>/`), `gen_cov`/`gen_html` (dựng lại `IP.ucdb` từ đầu chỉ từ `<ID>.ucdb` của các test trong `pat.list`, không gộp `IP.ucdb` cũ), `clean_sim` (file tạm của một lần chạy, giữ `*.ucdb`, `coverage/`), `clean` (xóa hết, kể cả coverage), `help`; Vivado: `schematic` (`SCH=<instance>`, `PART=<device>`); `gen_data`. `TESTNAME` mặc định = dòng đầu `pat.list`; `MODULE` suy ra từ `TESTNAME` (`TC_<M>_<NNN>` → `<m>`), `TB_NAME = tb_<m>`. |
 | `compile.f` | `-timescale 1ns/1ps`, `+incdir+.`, `-f rtl.f`, `-f tb.f`. |
-| `rtl.f` | Mọi file `rtl/*.v`, module con trước module cha, dạng `../rtl/<file>.v`. S5 thêm file của cây `<m>` nếu thiếu. |
+| `rtl.f` | Mọi file `rtl/*.v`, module con trước module cha, dạng `../rtl/<file>.v`. Dòng chứa `//` là comment. S5 thêm file của cây `<m>` nếu thiếu. |
 | `tb.f` | `../tb/${TB_NAME}.v` (QuestaSim thay biến môi trường do Makefile export). |
 | `pat.list` | ID testcase, mỗi dòng một ID; dòng chứa `//` bị bỏ qua. S5 thêm ID của `<m>`. |
 | `run.csh` / `report.csh` | Chạy hết `pat.list` (`./run.csh`; `./run.csh cov` chạy `make clean` một lần trước để regression coverage bắt đầu từ đầu) / bảng PAT_NAME – RUN_DATE – RESULT từ `log/<ID>.log` (`End time`, `Test_result`). Cần `tcsh`. |
@@ -339,4 +339,4 @@ Mẫu ở `references/sim_env/`; chỉ chép file nào chưa có trong `sim/`, k
 
 Đầu ra mô phỏng (`work/`, `log/`, `*.log`, `*.wlf`, `vsim.dbg`, `modelsim.ini`, `*.ucdb`, `coverage/`, `covhtmlreport/`, `run_test.v`, `.Xil/`) là file sinh ra, không phải tài liệu cần giữ; `make clean` xóa phần lớn.
 
-Không có QuestaSim → Icarus chạy từ `sim/` ở `-g2005` (cùng chế độ lint RTL của S3): `cp ../testcases/<ID>.v run_test.v && iverilog -g2005 -I. -o tb.vvp $(cat rtl.f) ../tb/tb_<m>.v && vvp tb.vvp | tee log/<ID>.log`, rồi xóa `run_test.v`, `tb.vvp`. Lỗi parse nghĩa là còn construct SV → sửa TB. Simulator là lựa chọn độc lập với ngôn ngữ: không bao giờ chuyển TB sang SystemVerilog để chạy một simulator. RTL module con cũ còn `.sv` → báo trong báo cáo, không tự viết lại RTL.
+Không có QuestaSim → Icarus chạy từ `sim/` ở `-g2005` (cùng chế độ lint RTL của S3): `cp ../tc/<ID>.v run_test.v && iverilog -g2005 -I. -o tb.vvp $(grep -v '^ *//' rtl.f) ../tb/tb_<m>.v && vvp tb.vvp | tee log/<ID>.log`, rồi xóa `run_test.v`, `tb.vvp`. Lỗi parse nghĩa là còn construct SV → sửa TB. Simulator là lựa chọn độc lập với ngôn ngữ: không bao giờ chuyển TB sang SystemVerilog để chạy một simulator. RTL module con cũ còn `.sv` → báo trong báo cáo, không tự viết lại RTL.

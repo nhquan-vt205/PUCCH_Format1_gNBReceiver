@@ -21,7 +21,7 @@ Vplan trả lời một câu: **thiết kế có làm đúng các chức năng c
 ## Bước 0 – Gate
 
 ```bash
-python3 .agents/skills$rtl-s4-vplan/scripts/check_preconditions.py --stage 4 --module <m>
+python3 .agents/skills/rtl-s4-vplan/scripts/check_preconditions.py --stage 4 --module <m>
 ```
 
 Cần spec PASS, bảng port, `rtl/<m>.sv|.v`. Mã thoát ≠ 0 → bỏ qua module đó, báo `[THIẾU]`. Dòng `[INFO] phạm vi tích hợp` nghĩa là DUT gồm cả module con → test theo kịch bản tích hợp.

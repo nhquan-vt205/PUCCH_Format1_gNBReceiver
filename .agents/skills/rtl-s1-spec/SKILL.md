@@ -24,7 +24,7 @@ Tham số: `các tham số người dùng truyền khi gọi skill`. Có `--rech
 ## Bước 0 – Gate
 
 ```bash
-python3 .agents/skills$rtl-s1-spec/scripts/check_preconditions.py --stage 1
+python3 .agents/skills/rtl-s1-spec/scripts/check_preconditions.py --stage 1
 ```
 
 Mã thoát ≠ 0 → báo nguyên văn các dòng `[THIẾU]` và dừng.
@@ -86,7 +86,7 @@ REQ/DAT/CTL ID không bắt buộc. Chỉ dùng ở IP lớn khi cần truy vế
 ## Bước 5 – Kiểm tra và trạng thái
 
 ```bash
-python3 .agents/skills$rtl-s1-spec/scripts/check_interface.py
+python3 .agents/skills/rtl-s1-spec/scripts/check_interface.py
 ```
 
 Sửa spec đến khi hết `[LỖI]` (script hiểu cả hai chế độ; ở chế độ phân cấp kiểm nối cha–con và anh em). Tự rà các mục ở mục 7 của `references/process.md`, rồi chốt trạng thái:

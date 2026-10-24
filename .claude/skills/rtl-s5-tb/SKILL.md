@@ -1,6 +1,6 @@
 ---
 name: rtl-s5-tb
-description: Stage 5 của RTL flow (tùy chọn, nhẹ) – viết testbench self-checking Verilog-2005 (tb/tb_<m>.v + mỗi item vplan một file testcases/<ID>.v) hiện thực đúng các direct test trong vplan của MỘT module (leaf hoặc cả cây con ở mức tích hợp) theo cấu trúc 9 phần cố định (golden model, checker, bộ đếm PASS/FAIL, log chuẩn), clock mặc định 20 ns, lái stimulus tại posedge + #1, cập nhật môi trường mô phỏng dùng chung sim/ (Makefile QuestaSim, rtl.f, pat.list), mô phỏng bằng QuestaSim nếu có. Theo rule testbench của người dùng trong tb_coding_rules/ nếu có. Dùng khi người dùng gọi /rtl-s5-tb <module> hoặc yêu cầu viết testbench theo vplan.
+description: Stage 5 của RTL flow (tùy chọn, nhẹ) – viết testbench self-checking Verilog-2005 (tb/tb_<m>.v + mỗi item vplan một file tc/<ID>.v) hiện thực đúng các direct test trong vplan của MỘT module (leaf hoặc cả cây con ở mức tích hợp) theo cấu trúc 9 phần cố định (golden model, checker, bộ đếm PASS/FAIL, log chuẩn), clock mặc định 20 ns, lái stimulus tại posedge + #1, cập nhật môi trường mô phỏng dùng chung sim/ (Makefile QuestaSim, rtl.f, pat.list), mô phỏng bằng QuestaSim nếu có. Theo rule testbench của người dùng trong tb_coding_rules/ nếu có. Dùng khi người dùng gọi /rtl-s5-tb <module> hoặc yêu cầu viết testbench theo vplan.
 argument-hint: "<tên_module> [tên_module ...]"
 disable-model-invocation: true
 ---
@@ -18,7 +18,7 @@ Testbench tự kiểm: stimulus → DUT → golden reference model → checker �
 ```
 rtl/        <m>.v ...                 # chỉ mã HDL (S3)
 tb/         tb_<m>.v                  # chỉ mã HDL: hạ tầng TB dùng chung cho mọi test của <m>
-testcases/  <ID>.v                    # chỉ mã HDL: chuỗi test của một item vplan
+tc/         <ID>.v                    # chỉ mã HDL: chuỗi test của một item vplan
 sim/        Makefile compile.f rtl.f tb.f pat.list run.csh report.csh schematic.tcl
             script/                   # script sinh dữ liệu test (nếu có), vd. <m>_gen_vectors.py
             log/<ID>.log              # log từng test – sinh ra, bị .gitignore
@@ -26,13 +26,13 @@ doc/database/input/   <m>_*.txt       # dữ liệu đưa vào DUT (TB đọc fi
 doc/database/output/  <m>_*.txt       # dữ liệu tham chiếu để so kết quả
 ```
 
-`rtl/`, `tb/`, `testcases/` chỉ chứa mã HDL – không dữ liệu, script, log. Mọi thứ Makefile/simulator sinh ra trong `sim/` (`work/`, `log/`, `*.wlf`, `*.ucdb`, `coverage/`, `run_test.v`…) không phải đầu ra cần giữ.
+`rtl/`, `tb/`, `tc/` chỉ chứa mã HDL – không dữ liệu, script, log. Mọi thứ Makefile/simulator sinh ra trong `sim/` (`work/`, `log/`, `*.wlf`, `*.ucdb`, `coverage/`, `run_test.v`…) không phải đầu ra cần giữ.
 
 ## Phạm vi
 
 - Chỉ đúng module(s) được nêu tên; không nhận "all".
 - Hiện thực **đúng và đủ** các test trong `doc/vplan/<m>_vplan.*`; test cần thêm → đề xuất trong báo cáo để cập nhật vplan.
-- Không sửa RTL, spec, diagram, vplan. Đầu ra chỉ: `tb/tb_<m>.v`, `testcases/<ID>.v` của module, `sim/` (mục Bước 3), `sim/script/<m>_*` và `doc/database/{input,output}/<m>_*` khi TB dùng file dữ liệu.
+- Không sửa RTL, spec, diagram, vplan. Đầu ra chỉ: `tb/tb_<m>.v`, `tc/<ID>.v` của module, `sim/` (mục Bước 3), `sim/script/<m>_*` và `doc/database/{input,output}/<m>_*` khi TB dùng file dữ liệu.
 
 ## Bước 0 – Gate
 
@@ -50,11 +50,11 @@ Cần spec PASS, bảng port, RTL của module **và mọi module con** (để m
 
 Đọc vplan, RTL (port, parameter), spec (handshake, reset, chu kỳ clock, latency). Chi tiết và khung mẫu: `references/default_tb_rules.md`. Luật bắt buộc:
 
-- **Ngôn ngữ:** Verilog-2005 (IEEE 1364-2005): `tb/tb_<m>.v` (module `tb_<m>`) và `testcases/<ID>.v`. Không construct SystemVerilog nào (`logic`, `bit`, `string`, `always_ff`, `typedef`, `enum`, `struct`, `interface`, `package`, `class`, `foreach`, queue, `$fatal`, SVA…). Comment, tên task và log chỉ dùng tiếng Anh.
+- **Ngôn ngữ:** Verilog-2005 (IEEE 1364-2005): `tb/tb_<m>.v` (module `tb_<m>`) và `tc/<ID>.v`. Không construct SystemVerilog nào (`logic`, `bit`, `string`, `always_ff`, `typedef`, `enum`, `struct`, `interface`, `package`, `class`, `foreach`, queue, `$fatal`, SVA…). Comment, tên task và log chỉ dùng tiếng Anh.
 - **TB: cấu trúc 9 phần, đúng thứ tự**, mỗi phần có header comment, giữ đủ header kể cả khi TB nhỏ (phần không cần thì để trống, không viết code giả): `1. Declaration` → `2. DUT Instance` → `3. Clock Generation` → `4. Init Reset` → `5. Golden Reference Model` → `6. Checker` → `7. Helper Functions` → `8. Tasks` → `9. Main Program Body`.
 - **Phần 8** chứa task lái giao thức/driver dùng chung và hai task bắt buộc: `init_test` (gán 0 `pass_count`/`fail_count`, đọc plusarg như `+IN`/`+OUT`) và `end_test` (in `[SUMMARY]`, in `Test_result: PASSED` khi FAIL = 0 và PASS > 0, ngược lại `Test_result: FAILED`, rồi `$finish`).
 - **Phần 9** chỉ gồm `` `include "run_test.v" `` (testcase được `make build` chép vào `sim/run_test.v`) và `initial` timeout toàn cục (in `[TIMEOUT]`, tăng `fail_count`, gọi `end_test`).
-- **Mỗi item vplan → một file `testcases/<ID>.v`**, tên file đúng ID vplan dạng `TC_<M>_<NNN>` (Makefile suy ra module từ tên này). File có header comment chép ID, tên, mục tiêu từ vplan, và đúng một khối `initial begin init_test; reset_dut; $display("-- <item name> test --"); <stimulus + check>; end_test; end`, thụt 2 khoảng trắng (được include bên trong module TB). Không chọn test bằng `+TEST`; test được chọn bằng `make TESTNAME=<ID>`.
+- **Mỗi item vplan → một file `tc/<ID>.v`**, tên file đúng ID vplan dạng `TC_<M>_<NNN>` (Makefile suy ra module từ tên này). File có header comment chép ID, tên, mục tiêu từ vplan, và đúng một khối `initial begin init_test; reset_dut; $display("-- <item name> test --"); <stimulus + check>; end_test; end`, thụt 2 khoảng trắng (được include bên trong module TB). Không chọn test bằng `+TEST`; test được chọn bằng `make TESTNAME=<ID>`.
 - **Clock:** `` `timescale 1ns/1ps ``, `parameter CLK_PERIOD = 20;` (20 ns mặc định; spec quy định chu kỳ khác thì theo spec), `clk = 1'b0` trong `initial` + `always #(CLK_PERIOD / 2) clk = ~clk;`.
 - **Stimulus:** mọi lần lái input DUT là `@(posedge clk); #1;` rồi gán. Không lái ở negedge, không lái đúng tại posedge. `#1` chỉ có trong TB, không bao giờ trong RTL.
 - **Reset:** theo spec – reset async tích cực ngay, nhả tại `posedge + #1`; reset đồng bộ lái như stimulus. `reset_dut` (phần 4) khởi tạo mọi input DUT và golden model; mỗi testcase gọi sau `init_test`.
@@ -65,11 +65,12 @@ Cần spec PASS, bảng port, RTL của module **và mọi module con** (để m
 
 ## Bước 3 – Môi trường `sim/` và chạy
 
-`sim/` dùng chung cho mọi module; mẫu ở `references/sim_env/`:
+`sim/` dùng chung cho mọi module; mẫu ở `references/sim_env/` (`init_project` đã chép sẵn khi tạo project):
 
 - `Makefile`, `compile.f`, `tb.f`, `run.csh`, `report.csh`, `schematic.tcl` chưa có → chép từ `references/sim_env/`. Đã có → **không ghi đè** (có thể là bản người dùng đã chỉnh); khác mẫu thì nêu trong báo cáo.
+- `rtl.f`, `pat.list` chưa có → chép mẫu (chỉ có dòng comment `//`) rồi thêm như dưới.
 - `rtl.f`: mọi file trong `rtl/`, module con trước module cha, đường dẫn `../rtl/<file>.v`, mỗi dòng một file. Thêm file RTL mới của cây `<m>` nếu chưa có; không xóa dòng của module khác.
-- `pat.list`: thêm ID các testcase của `<m>` (mỗi dòng một ID, theo thứ tự vplan); giữ dòng của module khác; dòng chứa `//` là comment.
+- `pat.list`: thêm ID các testcase của `<m>` (mỗi dòng một ID, theo thứ tự vplan); giữ dòng của module khác; dòng chứa `//` là comment (cũng bỏ qua trong `rtl.f`).
 
 Makefile suy ra `MODULE` từ `TESTNAME` (`TC_<M>_<NNN>` → `<m>` chữ thường), `TB_NAME = tb_<m>`; `tb.f` dùng `${TB_NAME}`. Chạy nếu có QuestaSim (`vsim` trong PATH), từng testcase một (không cần `csh`):
 
@@ -78,7 +79,7 @@ for t in <ID_1> <ID_2> ...; do make -C sim all TESTNAME=$t; done
 python3 .claude/skills/rtl-s5-tb/scripts/check_sim_log.py sim/log/<ID_1>.log sim/log/<ID_2>.log ... doc/vplan/<m>_vplan.<ext>
 ```
 
-Không có QuestaSim mà có Icarus → chạy thay từ `sim/` (cùng file `.v` Verilog-2005, không chuyển sang SystemVerilog): `cp ../testcases/<ID>.v run_test.v && iverilog -g2005 -I. -o tb.vvp $(cat rtl.f) ../tb/tb_<m>.v && vvp tb.vvp | tee log/<ID>.log`, rồi `rm -f run_test.v tb.vvp`.
+Không có QuestaSim mà có Icarus → chạy thay từ `sim/` (cùng file `.v` Verilog-2005, không chuyển sang SystemVerilog): `cp ../tc/<ID>.v run_test.v && iverilog -g2005 -I. -o tb.vvp $(grep -v '^ *//' rtl.f) ../tb/tb_<m>.v && vvp tb.vvp | tee log/<ID>.log`, rồi `rm -f run_test.v tb.vvp`.
 
 `check_sim_log.py` nhận một hay nhiều log, bỏ tiền tố `# ` của transcript Questa, map header `-- <item name> test --` về ID vplan theo tên item, rồi kiểm: item vplan chưa chạy/không có case, case FAIL, dòng case sai định dạng, case trước mọi header, header không có trong vplan/trùng giữa các log, `[SUMMARY]` thiếu/trùng/lệch số dòng PASS/FAIL và `Test_result` thiếu/sai trong từng log, `[TIMEOUT]`/fatal. Vplan dùng ID khác `TC_…` mà không phải bảng có cột `ID` → thêm `--id-re '<regex>'`.
 
@@ -92,14 +93,14 @@ Không có simulator → không phải lỗi thiết kế; ghi "chưa chạy mô
 
 ```
 tb/tb_<m>.v                          # Verilog-2005, hạ tầng TB
-testcases/<ID>.v                     # một file mỗi item vplan
+tc/<ID>.v                            # một file mỗi item vplan
 sim/rtl.f, sim/pat.list              # cập nhật cho <m>
 sim/Makefile, compile.f, tb.f, run.csh, report.csh, schematic.tcl   # chỉ khi chưa có (chép mẫu)
 sim/script/<m>_gen_vectors.py, doc/database/{input,output}/<m>_*.txt # chỉ khi TB dùng file dữ liệu
 sim/log/<ID>.log                     # nếu đã chạy – sinh ra, bị .gitignore
 ```
 
-File theo cấu trúc cũ (`tb/<m>/tb_<m>.v|.sv`, `sim/<m>/…`) → **không tự xóa**, không đưa vào filelist; nêu trong báo cáo là file legacy để người dùng quyết định.
+File theo cấu trúc cũ (`tb/<m>/tb_<m>.v|.sv`, `sim/<m>/…`, `testcases/<ID>.v`) → **không tự xóa**, không đưa vào filelist; nêu trong báo cáo là file legacy để người dùng quyết định.
 
 ## Báo cáo cuối (chỉ trong chat)
 
