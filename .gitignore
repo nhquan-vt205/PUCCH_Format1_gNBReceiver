@@ -1,7 +1,7 @@
 # ============================================================================
 # Allow-list: only HDL sources, simulation scripts, docs, AI skills, the AI
-# instruction files (CLAUDE.md, AGENTS.md) and README are committed.
-# Everything else is ignored.
+# instruction files (CLAUDE.md, AGENTS.md), the session template and README
+# are committed. Everything else is ignored.
 # ============================================================================
 
 # 1. Project root: ignore everything ...
@@ -12,15 +12,17 @@
 !/CLAUDE.md
 !/AGENTS.md
 !/README*
+!/init_project
 !/rtl/
 !/tb/
 !/tc/
 !/sim/
 !/doc/
+!/memory_bank/
 !/.claude/
 !/.agents/
 
-# 2. rtl/, tb/, tc/:       HDL source code only
+# 2. rtl/, tb/, tc/: HDL source code only
 /rtl/*
 !/rtl/*.v
 !/rtl/*.vh
@@ -52,13 +54,20 @@
 # MATLAB raw grid (~250 MB): over the GitHub 100 MB file limit
 /doc/database/rx_grid_SNR_*.csv
 
-# 5. AI folders: skills only
+# 5. memory_bank/: only the template; session summaries stay local
+/memory_bank/*
+!/memory_bank/session_template.md
+
+# 6. AI folders: skills only
 /.claude/*
 !/.claude/skills/
 /.agents/*
 !/.agents/skills/
 
-# 6. Anywhere: tool / editor leftovers
+# 7. Empty-folder placeholders
+!.gitkeep
+
+# 8. Anywhere: tool / editor leftovers
 node_modules/
 __pycache__/
 *.pyc
